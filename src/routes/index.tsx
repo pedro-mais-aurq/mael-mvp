@@ -43,7 +43,21 @@ const QUICK_PROMPTS = [
   "O que o dia de hoje me reserva?",
 ];
 
-type ToolOutput = { kind?: string; [key: string]: JsonValue | undefined };
+type ToolOutput =
+  | {
+      kind: "task_created";
+      title?: string;
+      due_date?: string | null;
+      due_time?: string | null;
+      priority?: string;
+      category?: string | null;
+    }
+  | { kind: "reminder_created"; title?: string; remind_at?: string }
+  | {
+      kind: "vault_matches";
+      query?: string;
+      entries?: { name?: string; service?: string | null; username?: string | null }[];
+    };
 
 function ToolOutputCard({ output }: { output: ToolOutput }) {
   if (output.kind === "task_created") {
