@@ -230,7 +230,16 @@ export async function orchestrateChat(opts: {
         .order("name")
         .limit(8);
       const metas: VaultMetaEntry[] = entries ?? [];
-      toolOutput = { kind: "vault_matches", query, entries: metas };
+      toolOutput = {
+        kind: "vault_matches",
+        query,
+        entries: metas.map((m) => ({
+          name: m.name,
+          service: m.service,
+          username: m.username,
+          strength_label: m.strength_label,
+        })),
+      };
       reply =
         metas.length === 0
           ? `Consultei seu cofre e não encontrei nada sobre "${query}". Se quiser, posso guardar essa senha agora — abra o Cofre.`

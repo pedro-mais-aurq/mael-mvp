@@ -108,7 +108,7 @@ export function evaluatePasswordStrength(password: string): { score: number; lab
   const lowered = password.toLowerCase();
   if (COMMON.some((c) => lowered.includes(c))) score = Math.min(score, 2);
   const labels = ["muito fraca", "fraca", "média", "forte", "muito forte", "excelente"];
-  return { score, label: labels[Math.min(score, labels.length - 1)] };
+  return { score, label: labels[Math.min(score, labels.length - 1)]! };
 }
 
 export function generateStrongPassword(length = 20): string {
