@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { ChatMessageDTO, SendChatResult, VaultMetaEntry } from "./mael-types";
+import type { ChatMessageDTO, JsonValue, SendChatResult, VaultMetaEntry } from "./mael-types";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-2.5-flash";
