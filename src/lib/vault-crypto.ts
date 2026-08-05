@@ -15,7 +15,7 @@ const PBKDF2_ITERATIONS = 210_000;
 
 function toBase64(bytes: Uint8Array): string {
   let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
   return btoa(binary);
 }
 
@@ -114,16 +114,18 @@ export function evaluatePasswordStrength(password: string): { score: number; lab
 export function generateStrongPassword(length = 20): string {
   const all = LOWER + UPPER + DIGITS + SYMBOLS;
   const required = [LOWER, UPPER, DIGITS, SYMBOLS].map(
-    (set) => set[crypto.getRandomValues(new Uint32Array(1))[0] % set.length],
+    (set) => set[crypto.getRandomValues(new Uint32Array(1))[0]! % set.length]!,
   );
   const remaining = length - required.length;
   const randoms = crypto.getRandomValues(new Uint32Array(remaining));
   const chars = [...required];
-  for (let i = 0; i < remaining; i++) chars.push(all[randoms[i] % all.length]);
+  for (let i = 0; i < remaining; i++) chars.push(all[randoms[i]! % all.length]!);
   // Fisher–Yates
   for (let i = chars.length - 1; i > 0; i--) {
-    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
-    [chars[i], chars[j]] = [chars[j], chars[i]];
+    const j = crypto.getRandomValues(new Uint32Array(1))[0]! % (i + 1);
+    const a = chars[i]!;
+    chars[i] = chars[j]!;
+    chars[j] = a;
   }
   return chars.join("");
 }

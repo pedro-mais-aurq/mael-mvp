@@ -1,5 +1,13 @@
 export type Priority = "baixa" | "media" | "alta";
 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 export interface ProfileRow {
   id: string;
   name: string | null;
@@ -14,7 +22,7 @@ export interface ChatMessageDTO {
   role: "user" | "assistant" | "tool";
   content: string;
   intent: string | null;
-  tool_output: Record<string, unknown> | null;
+  tool_output: JsonValue | null;
   created_at: string;
 }
 

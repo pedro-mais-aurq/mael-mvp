@@ -163,7 +163,7 @@ export async function orchestrateChat(opts: {
   let reply =
     action?.assistant_reply?.trim() ||
     "As cartas embaralharam por um instante — repita sua pergunta, viajante.";
-  let toolOutput: Record<string, unknown> | null = null;
+  let toolOutput: JsonValue | null = null;
 
   if (intent === "create_task" && action) {
     const title = asString(action.args["title"]);
@@ -235,7 +235,7 @@ export async function orchestrateChat(opts: {
         metas.length === 0
           ? `Consultei seu cofre e não encontrei nada sobre "${query}". Se quiser, posso guardar essa senha agora — abra o Cofre.`
           : metas.length === 1
-            ? `Encontrei uma entrada no seu cofre: ${metas[0].service ?? metas[0].name}. Por segurança, a senha só é revelada no Cofre, com sua senha mestra.`
+            ? `Encontrei uma entrada no seu cofre: ${metas[0]!.service ?? metas[0]!.name}. Por segurança, a senha só é revelada no Cofre, com sua senha mestra.`
             : `Encontrei ${metas.length} entradas no seu cofre. A senha em si só é revelada no Cofre, com sua senha mestra.`;
     } else {
       intent = "chat";
