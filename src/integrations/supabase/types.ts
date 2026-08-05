@@ -14,7 +14,230 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          intent: string
+          role: string
+          session_id: string
+          tool_output: Json | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          intent?: string
+          role: string
+          session_id: string
+          tool_output?: Json | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          intent?: string
+          role?: string
+          session_id?: string
+          tool_output?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          master_salt: string | null
+          master_verifier: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          master_salt?: string | null
+          master_verifier?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          master_salt?: string | null
+          master_verifier?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reminders: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          notes: string
+          remind_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          notes?: string
+          remind_at: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          notes?: string
+          remind_at?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          category: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          description: string
+          due_date: string | null
+          due_time: string | null
+          id: string
+          priority: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          priority?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          priority?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vault_entries: {
+        Row: {
+          category: string
+          created_at: string
+          domain: string
+          email: string
+          id: string
+          name: string
+          notes_ciphertext: string
+          password_ciphertext: string
+          password_updated_at: string
+          service: string
+          strength_label: string
+          strength_score: number
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          domain?: string
+          email?: string
+          id?: string
+          name: string
+          notes_ciphertext?: string
+          password_ciphertext?: string
+          password_updated_at?: string
+          service?: string
+          strength_label?: string
+          strength_score?: number
+          updated_at?: string
+          user_id: string
+          username?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          domain?: string
+          email?: string
+          id?: string
+          name?: string
+          notes_ciphertext?: string
+          password_ciphertext?: string
+          password_updated_at?: string
+          service?: string
+          strength_label?: string
+          strength_score?: number
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
