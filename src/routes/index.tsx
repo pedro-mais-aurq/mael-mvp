@@ -8,7 +8,7 @@ import { ptBR } from "date-fns/locale";
 
 import { AppShell } from "@/components/app-shell";
 import { sendChat } from "@/lib/chat.functions";
-import type { ChatMessageDTO, JsonValue } from "@/lib/mael-types";
+import type { ChatMessageDTO } from "@/lib/mael-types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
