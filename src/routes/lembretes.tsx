@@ -22,9 +22,12 @@ export const Route = createFileRoute("/lembretes")({
   head: () => ({
     meta: [
       { title: "Lembretes — Mael" },
-      { name: "description", content: "Os sinos do Louco: lembretes que tocam na hora certa, criados por voz ou à mão." },
+      {
+        name: "description",
+        content: "Lembretes que tocam na hora certa, criados por voz ou à mão.",
+      },
       { property: "og:title", content: "Lembretes — Mael" },
-      { property: "og:description", content: "Gerencie os lembretes que O Louco gravou para você." },
+      { property: "og:description", content: "Gerencie seus lembretes." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -53,7 +56,7 @@ function RemindersPage() {
       setTitle("");
       setWhen("");
       invalidate();
-      toast.success("Lembrete gravado — o sino tocará na hora certa.");
+      toast.success("Lembrete criado.");
     },
     onError: () => toast.error("Não consegui gravar o lembrete."),
   });
@@ -117,7 +120,7 @@ function RemindersPage() {
           Lembretes
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Os sinos do Louco — cada um toca uma única vez, exatamente quando deve.
+          Cada lembrete dispara uma única vez, exatamente quando deve.
         </p>
 
         <form
@@ -125,7 +128,7 @@ function RemindersPage() {
             e.preventDefault();
             if (title.trim() && when) addMutation.mutate();
           }}
-          className="tarot-card mt-5 flex flex-col gap-3 p-4 pt-6 sm:flex-row sm:items-end"
+          className="panel-card mt-5 flex flex-col gap-3 p-4 pt-6 sm:flex-row sm:items-end"
         >
           <div className="flex-1">
             <Input
@@ -155,15 +158,15 @@ function RemindersPage() {
 
         {isLoading ? (
           <p className="py-10 text-center text-sm text-muted-foreground italic">
-            Afinando os sinos…
+            Carregando lembretes…
           </p>
         ) : !reminders?.length ? (
-          <div className="tarot-card mt-5 py-12 text-center">
+          <div className="panel-card mt-5 py-12 text-center">
             <p className="font-display text-sm tracking-[0.25em] text-muted-foreground uppercase">
-              Nenhum sino enrolado
+              Nenhum lembrete
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Grave acima ou peça ao Louco na Conversa.
+              Crie acima ou peça ao Mael na Conversa.
             </p>
           </div>
         ) : (

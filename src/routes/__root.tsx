@@ -19,15 +19,13 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="font-display text-7xl font-bold text-primary gold-glow">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Caminho não encontrado</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          O Louco segue muitas trilhas, mas esta não é uma delas.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Essa página não existe ou foi movida.</p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Voltar à jornada
+            Voltar ao início
           </Link>
         </div>
       </div>
@@ -45,11 +43,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          As cartas se embaralharam
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Algo deu errado</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Algo saiu do compasso. Tente de novo ou volte ao início da jornada.
+          Ocorreu um erro inesperado. Tente novamente ou volte ao início.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -78,18 +74,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Mael — Converse com O Louco" },
+      { title: "Mael — Seu assistente pessoal" },
       {
         name: "description",
         content:
-          "Mael é o arcano zero do tarô em forma de assistente: converse com O Louco para criar tarefas, agendar lembretes e guardar senhas em um cofre criptografado de ponta a ponta.",
+          "Mael é o seu assistente pessoal: converse para criar tarefas, agendar lembretes e guardar senhas em um cofre criptografado de ponta a ponta.",
       },
       { name: "author", content: "Mael" },
-      { property: "og:title", content: "Mael — Converse com O Louco" },
+      { property: "og:title", content: "Mael — Seu assistente pessoal" },
       {
         property: "og:description",
         content:
-          "O arcano zero do tarô como assistente pessoal: tarefas, lembretes e cofre de senhas criptografado, em português.",
+          "Assistente pessoal para tarefas, lembretes e cofre de senhas criptografado, em português.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

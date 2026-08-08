@@ -26,9 +26,9 @@ export const Route = createFileRoute("/tarefas")({
   head: () => ({
     meta: [
       { title: "Tarefas — Mael" },
-      { name: "description", content: "Suas tarefas anotadas no pergaminho do Louco: crie, conclua e organize por prioridade." },
+      { name: "description", content: "Suas tarefas: crie, conclua e organize por prioridade." },
       { property: "og:title", content: "Tarefas — Mael" },
-      { property: "og:description", content: "Gerencie as tarefas que O Louco anotou para você." },
+      { property: "og:description", content: "Gerencie suas tarefas." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -81,7 +81,7 @@ function TasksPage() {
       setDueDate("");
       setPriority("media");
       invalidate();
-      toast.success("Tarefa anotada no pergaminho.");
+      toast.success("Tarefa criada.");
     },
     onError: () => toast.error("Não consegui anotar a tarefa."),
   });
@@ -96,7 +96,7 @@ function TasksPage() {
     mutationFn: (id: string) => deleteTask({ data: { id } }),
     onSuccess: () => {
       invalidate();
-      toast.success("Tarefa riscada do pergaminho.");
+      toast.success("Tarefa concluída.");
     },
   });
 
@@ -107,7 +107,7 @@ function TasksPage() {
           Tarefas
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          O pergaminho do Louco — o que precisa ser feito, na ordem em que o vento sopra.
+          O que precisa ser feito, organizado por prioridade.
         </p>
 
         <form
@@ -115,7 +115,7 @@ function TasksPage() {
             e.preventDefault();
             if (title.trim()) addMutation.mutate();
           }}
-          className="tarot-card mt-5 flex flex-col gap-3 p-4 pt-6 sm:flex-row sm:items-end"
+          className="panel-card mt-5 flex flex-col gap-3 p-4 pt-6 sm:flex-row sm:items-end"
         >
           <div className="flex-1">
             <Input
@@ -152,15 +152,15 @@ function TasksPage() {
         <div className="mt-5 space-y-2">
           {isLoading ? (
             <p className="py-10 text-center text-sm text-muted-foreground italic">
-              Desenrolando o pergaminho…
+              Carregando tarefas…
             </p>
           ) : !tasks?.length ? (
-            <div className="tarot-card py-12 text-center">
+            <div className="panel-card py-12 text-center">
               <p className="font-display text-sm tracking-[0.25em] text-muted-foreground uppercase">
-                O pergaminho está em branco
+                Nenhuma tarefa
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Anote acima ou peça ao Louco na Conversa.
+                Crie acima ou peça ao Mael na Conversa.
               </p>
             </div>
           ) : (
@@ -179,10 +179,7 @@ function TasksPage() {
                 />
                 <div className="min-w-0 flex-1">
                   <p
-                    className={cn(
-                      "truncate text-sm font-medium",
-                      task.completed && "line-through",
-                    )}
+                    className={cn("truncate text-sm font-medium", task.completed && "line-through")}
                   >
                     {task.title}
                   </p>

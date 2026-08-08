@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: install → lint → typecheck → test → build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      # O projeto tem package-lock.json (npm) e bun.lock (bun) lado a lado;
+      # npm ci é o fluxo oficial da CI porque o pipeline de deploy (Nitro/
+      # Cloudflare) e o restante da automação já assumem npm. bun.lock é
+      # mantido apenas para quem preferir bun localmente — não é usado aqui
+      # para evitar dois gerenciadores de pacote divergindo no lockfile.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Valores fictícios apenas para permitir que o build (SSR/Vite)
+          # complete sem exigir segredos reais no CI. Nenhuma chamada de
+          # rede real acontece durante `vite build`.
+          SUPABASE_URL: "https://placeholder.supabase.co"
+          SUPABASE_PUBLISHABLE_KEY: "placeholder"
+          VITE_SUPABASE_URL: "https://placeholder.supabase.co"
+          VITE_SUPABASE_PUBLISHABLE_KEY: "placeholder"

@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Mael — "O Louco" design system.
- * Paleta: dourado (ouro do arcano zero) sobre off-black quente.
+ * Mael — design system.
+ * Paleta: dourado sobre off-black quente.
  * Tipografia: Cinzel (display, capitular romana) + Spectral (corpo).
  */
 
@@ -64,7 +64,7 @@
   --card-foreground: oklch(0.93 0.02 95);
   --popover: oklch(0.21 0.012 78);
   --popover-foreground: oklch(0.93 0.02 95);
-  /* Ouro do Louco */
+  /* Dourado principal */
   --primary: oklch(0.76 0.115 88);
   --primary-foreground: oklch(0.18 0.012 75);
   --secondary: oklch(0.25 0.014 80);
@@ -151,8 +151,8 @@
   }
 }
 
-/* Carta de tarô: moldura fina dourada com cantos ornamentados */
-@utility tarot-card {
+/* Cartão padrão: moldura fina dourada, fundo escuro */
+@utility panel-card {
   position: relative;
   border: 1px solid oklch(0.76 0.115 88 / 0.35);
   border-radius: var(--radius-xl);
@@ -163,18 +163,6 @@
     0 0 0 1px oklch(0.1 0.005 70 / 0.8),
     0 12px 40px -12px oklch(0 0 0 / 0.7),
     inset 0 1px 0 oklch(0.76 0.115 88 / 0.12);
-
-  &::after {
-    content: "✦ ✦ ✦";
-    position: absolute;
-    top: 0.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.55rem;
-    letter-spacing: 0.6em;
-    color: oklch(0.76 0.115 88 / 0.45);
-    pointer-events: none;
-  }
 }
 
 @utility gold-glow {

@@ -15,13 +15,13 @@ const foolLogo = new URL("../assets/fool-logo.svg", import.meta.url).href;
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — Mael, O Louco" },
+      { title: "Entrar — Mael" },
       {
         name: "description",
-        content: "Acesse sua conta Mael e converse com O Louco: tarefas, lembretes e cofre de senhas criptografado.",
+        content: "Acesse sua conta Mael: tarefas, lembretes e cofre de senhas criptografado.",
       },
-      { property: "og:title", content: "Entrar — Mael, O Louco" },
-      { property: "og:description", content: "Dê o primeiro passo: entre ou crie sua conta Mael." },
+      { property: "og:title", content: "Entrar — Mael" },
+      { property: "og:description", content: "Entre ou crie sua conta Mael." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -50,7 +50,7 @@ function AuthPage() {
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (err) {
-      setError("Email ou senha incorretos. O Louco tropeçou, mas você não precisa tropeçar.");
+      setError("Email ou senha incorretos.");
       return;
     }
     navigate({ to: "/" });
@@ -77,7 +77,7 @@ function AuthPage() {
       return;
     }
     setBusy(false);
-    toast.success("Conta criada! Confirme seu email para dar o primeiro passo.");
+    toast.success("Conta criada! Confirme seu email para continuar.");
   }
 
   async function signInWithGoogle() {
@@ -97,19 +97,16 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-10">
       <div className="mb-8 flex flex-col items-center text-center">
-        <img src={foolLogo} alt="O Louco — arcano zero do tarô" className="h-28 w-28" />
+        <img src={foolLogo} alt="Mael" className="h-28 w-28" />
         <h1 className="font-display mt-4 text-4xl font-bold tracking-[0.22em] text-primary gold-glow">
           MAEL
         </h1>
         <p className="font-display mt-1 text-xs tracking-[0.42em] text-muted-foreground uppercase">
-          0 · O Louco
-        </p>
-        <p className="mt-3 max-w-xs text-sm text-muted-foreground italic">
-          "Dê o primeiro passo — a beira do precipício é só o começo da estrada."
+          Assistente pessoal
         </p>
       </div>
 
-      <div className="tarot-card w-full max-w-sm p-6 pt-8">
+      <div className="panel-card w-full max-w-sm p-6 pt-8">
         <Tabs defaultValue="entrar">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="entrar">Entrar</TabsTrigger>
@@ -144,7 +141,7 @@ function AuthPage() {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? "Consultando as cartas…" : "Entrar"}
+                {busy ? "Entrando…" : "Entrar"}
               </Button>
             </form>
           </TabsContent>
@@ -160,7 +157,7 @@ function AuthPage() {
                   autoComplete="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Como O Louco deve te chamar?"
+                  placeholder="Como devo te chamar?"
                 />
               </div>
               <div className="space-y-1.5">
@@ -190,7 +187,7 @@ function AuthPage() {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? "Selando o pacto…" : "Criar conta"}
+                {busy ? "Criando conta…" : "Criar conta"}
               </Button>
             </form>
           </TabsContent>
@@ -220,8 +217,7 @@ function AuthPage() {
       </div>
 
       <p className="mt-6 max-w-xs text-center text-xs text-muted-foreground">
-        Suas senhas ficam em um cofre zero-knowledge: nem o Louco — nem ninguém — lê o que só
-        você pode abrir.
+        Suas senhas ficam em um cofre zero-knowledge: ninguém além de você consegue lê-las.
       </p>
     </div>
   );

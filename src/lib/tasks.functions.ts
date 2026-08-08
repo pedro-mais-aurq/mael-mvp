@@ -3,19 +3,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { TasksRepository } from "./repositories/tasks.repository";
+import { TaskService } from "./services/task.service";
+import { handleServiceError } from "./core/exceptions";
 import type { TaskRow } from "./mael-types";
+
+function taskService(supabase: SupabaseClient): TaskService {
+  return new TaskService(new TasksRepository(supabase));
+}
 
 export const listTasks = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<TaskRow[]> => {
     const supabase = context.supabase as unknown as SupabaseClient;
-    const { data, error } = await supabase
-      .from("tasks")
-      .select("*")
-      .order("completed", { ascending: true })
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as TaskRow[];
+    try {
+      return await taskService(supabase).listForUser();
+    } catch (err) {
+      throw handleServiceError(err, { route: "tasks.listTasks", userId: context.userId });
+    }
   });
 
 export const createTask = createServerFn({ method: "POST" })
@@ -40,37 +45,24 @@ export const createTask = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as unknown as SupabaseClient;
-    const { data: row, error } = await supabase
-      .from("tasks")
-      .insert({
-        user_id: context.userId,
-        title: data.title,
-        description: data.description ?? null,
-        category: data.category ?? null,
-        priority: data.priority,
-        due_date: data.due_date ?? null,
-        due_time: data.due_time ?? null,
-      })
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
-    return row as TaskRow;
+    try {
+      return await taskService(supabase).create(context.userId, data);
+    } catch (err) {
+      throw handleServiceError(err, { route: "tasks.createTask", userId: context.userId });
+    }
   });
 
 export const toggleTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) =>
-    z.object({ id: z.string().uuid(), completed: z.boolean() }).parse(data),
-  )
+  .inputValidator((data) => z.object({ id: z.string().uuid(), completed: z.boolean() }).parse(data))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as unknown as SupabaseClient;
-    const { error } = await supabase
-      .from("tasks")
-      .update({ completed: data.completed })
-      .eq("id", data.id)
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    try {
+      await taskService(supabase).setCompleted(context.userId, data.id, data.completed);
+      return { ok: true };
+    } catch (err) {
+      throw handleServiceError(err, { route: "tasks.toggleTask", userId: context.userId });
+    }
   });
 
 export const deleteTask = createServerFn({ method: "POST" })
@@ -78,11 +70,10 @@ export const deleteTask = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as unknown as SupabaseClient;
-    const { error } = await supabase
-      .from("tasks")
-      .delete()
-      .eq("id", data.id)
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    try {
+      await taskService(supabase).delete(context.userId, data.id);
+      return { ok: true };
+    } catch (err) {
+      throw handleServiceError(err, { route: "tasks.deleteTask", userId: context.userId });
+    }
   });

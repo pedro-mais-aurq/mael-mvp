@@ -6,11 +6,7 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { getProfile, setMasterSecret, verifyMaster } from "@/lib/profile.functions";
-import {
-  createVaultEntry,
-  deleteVaultEntry,
-  listVaultEntries,
-} from "@/lib/vault.functions";
+import { createVaultEntry, deleteVaultEntry, listVaultEntries } from "@/lib/vault.functions";
 import {
   deriveVaultKey,
   decryptField,
@@ -39,7 +35,10 @@ export const Route = createFileRoute("/cofre")({
           "Cofre zero-knowledge: senhas cifradas no seu dispositivo com AES-GCM derivado da senha mestra. O servidor jamais vê o conteúdo.",
       },
       { property: "og:title", content: "Cofre — Mael" },
-      { property: "og:description", content: "Seu cofre de senhas criptografado de ponta a ponta." },
+      {
+        property: "og:description",
+        content: "Seu cofre de senhas criptografado de ponta a ponta.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -165,8 +164,8 @@ function VaultPage() {
               Cofre
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Zero-knowledge: as senhas são cifradas aqui, no seu dispositivo. O servidor só
-              guarda enigmas que não consegue ler.
+              Zero-knowledge: as senhas são cifradas aqui, no seu dispositivo. O servidor só guarda
+              enigmas que não consegue ler.
             </p>
           </div>
           {status === "unlocked" && (
@@ -178,20 +177,23 @@ function VaultPage() {
 
         {status === "loading" && (
           <p className="py-16 text-center text-sm text-muted-foreground italic">
-            Examinando o selo do cofre…
+            Verificando o status do cofre…
           </p>
         )}
 
         {status === "setup" && (
-          <form onSubmit={setupMaster} className="tarot-card mx-auto mt-8 max-w-sm space-y-4 p-6 pt-8">
+          <form
+            onSubmit={setupMaster}
+            className="panel-card mx-auto mt-8 max-w-sm space-y-4 p-6 pt-8"
+          >
             <div className="text-center">
               <img src={foolLogo} alt="" className="mx-auto h-14 w-14" />
               <h2 className="font-display mt-3 text-sm tracking-[0.25em] text-primary uppercase">
                 Crie sua senha mestra
               </h2>
               <p className="mt-2 text-xs text-muted-foreground">
-                É ela — e só ela — que abre seu cofre. Não a guardamos em lugar nenhum: se
-                perdê-la, nem o Louco poderá ajudar.
+                É ela — e só ela — que abre seu cofre. Não a guardamos em lugar nenhum: se perdê-la,
+                não será possível recuperá-la.
               </p>
             </div>
             <div className="space-y-1.5">
@@ -220,20 +222,20 @@ function VaultPage() {
             </div>
             {unlockError && <p className="text-sm text-destructive">{unlockError}</p>}
             <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Forjando o selo…" : "Selar o cofre"}
+              {busy ? "Criando…" : "Criar cofre"}
             </Button>
           </form>
         )}
 
         {status === "locked" && (
-          <form onSubmit={unlock} className="tarot-card mx-auto mt-8 max-w-sm space-y-4 p-6 pt-8">
+          <form onSubmit={unlock} className="panel-card mx-auto mt-8 max-w-sm space-y-4 p-6 pt-8">
             <div className="text-center">
               <Lock className="mx-auto h-8 w-8 text-primary" />
               <h2 className="font-display mt-3 text-sm tracking-[0.25em] text-primary uppercase">
-                O cofre está selado
+                O cofre está bloqueado
               </h2>
               <p className="mt-2 text-xs text-muted-foreground">
-                Sussurre a senha mestra e as portas se abrem.
+                Digite a senha mestra para desbloquear.
               </p>
             </div>
             <Input
@@ -247,7 +249,7 @@ function VaultPage() {
             />
             {unlockError && <p className="text-sm text-destructive">{unlockError}</p>}
             <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "Girando a chave…" : "Abrir o cofre"}
+              {busy ? "Desbloqueando…" : "Abrir o cofre"}
             </Button>
           </form>
         )}
@@ -273,13 +275,13 @@ function VaultPage() {
             <div className="mt-4 space-y-2">
               {entriesLoading ? (
                 <p className="py-10 text-center text-sm text-muted-foreground italic">
-                  Contando os segredos…
+                  Carregando entradas…
                 </p>
               ) : !entries?.length ? (
-                <div className="tarot-card py-12 text-center">
+                <div className="panel-card py-12 text-center">
                   <LockOpen className="mx-auto h-6 w-6 text-primary" />
                   <p className="font-display mt-3 text-sm tracking-[0.25em] text-muted-foreground uppercase">
-                    O cofre ecoa vazio
+                    O cofre está vazio
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Guarde sua primeira senha — ela será cifrada antes de sair daqui.
@@ -341,7 +343,7 @@ function NewEntryForm({ vaultKey, onDone }: { vaultKey: CryptoKey; onDone: () =>
         e.preventDefault();
         if (name.trim() && password) saveMutation.mutate();
       }}
-      className="tarot-card mt-4 space-y-3 p-4 pt-6"
+      className="panel-card mt-4 space-y-3 p-4 pt-6"
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -407,12 +409,7 @@ function NewEntryForm({ vaultKey, onDone }: { vaultKey: CryptoKey; onDone: () =>
           </Button>
         </div>
         {password && (
-          <p
-            className={cn(
-              "text-xs",
-              strength.score <= 2 ? "text-destructive" : "text-primary",
-            )}
-          >
+          <p className={cn("text-xs", strength.score <= 2 ? "text-destructive" : "text-primary")}>
             Força: {strength.label}
           </p>
         )}
@@ -467,7 +464,12 @@ function VaultEntryCard({
             {entry.strength_label}
           </Badge>
         )}
-        <Button variant="ghost" size="icon" onClick={onReveal} title={plain ? "Ocultar senha" : "Revelar senha"}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onReveal}
+          title={plain ? "Ocultar senha" : "Revelar senha"}
+        >
           {plain ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </Button>
         <Button

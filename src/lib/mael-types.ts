@@ -1,12 +1,7 @@
 export type Priority = "baixa" | "media" | "alta";
 
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export interface ProfileRow {
   id: string;

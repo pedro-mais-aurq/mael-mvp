@@ -18,16 +18,16 @@ const foolLogo = new URL("../assets/fool-logo.svg", import.meta.url).href;
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mael — Converse com O Louco" },
+      { title: "Mael — Converse com seu assistente" },
       {
         name: "description",
         content:
-          "Fale com O Louco: peça em linguagem natural para criar tarefas, agendar lembretes e consultar seu cofre de senhas criptografado.",
+          "Fale com Mael: peça em linguagem natural para criar tarefas, agendar lembretes e consultar seu cofre de senhas criptografado.",
       },
-      { property: "og:title", content: "Mael — Converse com O Louco" },
+      { property: "og:title", content: "Mael — Converse com seu assistente" },
       {
         property: "og:description",
-        content: "O arcano zero do tarô como assistente pessoal: tarefas, lembretes e cofre seguro, em português.",
+        content: "Assistente pessoal: tarefas, lembretes e cofre seguro, em português.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -40,7 +40,7 @@ const QUICK_PROMPTS = [
   "Anota a tarefa de comprar pão amanhã de manhã",
   "Me lembra de regar as plantas hoje às 18h",
   "Qual é a senha do meu banco?",
-  "O que o dia de hoje me reserva?",
+  "Quais são minhas tarefas de hoje?",
 ];
 
 type ToolOutput =
@@ -91,7 +91,11 @@ function ToolOutputCard({ output }: { output: ToolOutput }) {
     );
   }
   if (output.kind === "vault_matches" && Array.isArray(output.entries)) {
-    const entries = output.entries as { name?: string; service?: string | null; username?: string | null }[];
+    const entries = output.entries as {
+      name?: string;
+      service?: string | null;
+      username?: string | null;
+    }[];
     if (entries.length === 0) return null;
     return (
       <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
@@ -101,7 +105,7 @@ function ToolOutputCard({ output }: { output: ToolOutput }) {
         <ul className="mt-1 space-y-1">
           {entries.map((e, i) => (
             <li key={i} className="flex items-baseline gap-2">
-              <span className="text-primary">✦</span>
+              <span className="text-primary">•</span>
               <span className="font-medium">{e.service ?? e.name}</span>
               {e.username && <span className="text-xs text-muted-foreground">{e.username}</span>}
             </li>
@@ -117,9 +121,9 @@ function AssistantCard({ message }: { message: ChatMessageDTO }) {
   return (
     <div className="flex items-start gap-3">
       <img src={foolLogo} alt="" className="mt-1 h-8 w-8 shrink-0" />
-      <div className="tarot-card max-w-[85%] px-4 py-3 pt-5">
+      <div className="panel-card max-w-[85%] px-4 py-3 pt-5">
         <span className="font-display absolute top-1.5 left-3 text-[0.55rem] tracking-[0.3em] text-primary/70 uppercase">
-          0 · O Louco
+          MAEL
         </span>
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
         {message.tool_output && <ToolOutputCard output={message.tool_output as ToolOutput} />}
@@ -186,15 +190,15 @@ function ChatPage() {
       const intent = result.assistant_message.intent;
       if (intent === "create_task") {
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        toast.success("Tarefa anotada no pergaminho.");
+        toast.success("Tarefa criada.");
       } else if (intent === "create_reminder") {
         queryClient.invalidateQueries({ queryKey: ["reminders"] });
-        toast.success("Lembrete gravado — o sino tocará na hora certa.");
+        toast.success("Lembrete criado.");
       }
     } catch (err) {
       console.error(err);
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      toast.error("A conexão com o oráculo falhou. Tente novamente.");
+      toast.error("A conexão falhou. Tente novamente.");
     } finally {
       setPending(false);
     }
@@ -206,13 +210,13 @@ function ChatPage() {
         <div className="flex-1 space-y-5 overflow-y-auto pr-1 pb-4">
           {messages.length === 0 && !pending ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
-              <img src={foolLogo} alt="O Louco" className="h-36 w-36" />
+              <img src={foolLogo} alt="Mael" className="h-36 w-36" />
               <h1 className="font-display mt-5 text-2xl font-bold tracking-[0.12em] text-primary gold-glow">
-                O Louco aguarda seu primeiro passo
+                Como posso ajudar?
               </h1>
               <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                Peça em linguagem natural: anoto tarefas no pergaminho, gravo lembretes que
-                tocam na hora certa e consulto seu cofre — sempre sem revelar segredos.
+                Peça em linguagem natural: crio tarefas, agendo lembretes que tocam na hora certa e
+                consulto seu cofre — sempre sem revelar segredos.
               </p>
               <div className="mt-6 flex max-w-lg flex-wrap justify-center gap-2">
                 {QUICK_PROMPTS.map((prompt) => (
@@ -238,13 +242,13 @@ function ChatPage() {
               {pending && (
                 <div className="flex items-start gap-3">
                   <img src={foolLogo} alt="" className="mt-1 h-8 w-8 animate-pulse" />
-                  <div className="tarot-card px-4 py-3 pt-5">
+                  <div className="panel-card px-4 py-3 pt-5">
                     <span className="font-display absolute top-1.5 left-3 text-[0.55rem] tracking-[0.3em] text-primary/70 uppercase">
-                      0 · O Louco
+                      MAEL
                     </span>
                     <p className="flex items-center gap-2 text-sm text-muted-foreground italic">
                       <Sparkles className="h-3.5 w-3.5 animate-spin text-primary" />
-                      consultando as estrelas…
+                      pensando…
                     </p>
                   </div>
                 </div>
@@ -270,7 +274,7 @@ function ChatPage() {
                 send(input);
               }
             }}
-            placeholder="Fale com O Louco… (Enter envia, Shift+Enter quebra linha)"
+            placeholder="Fale com Mael… (Enter envia, Shift+Enter quebra linha)"
             rows={1}
             className={cn("min-h-10 max-h-32 resize-none")}
             autoFocus

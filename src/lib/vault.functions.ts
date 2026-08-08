@@ -3,18 +3,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { VaultRepository } from "./repositories/vault.repository";
+import { VaultService } from "./services/vault.service";
+import { handleServiceError } from "./core/exceptions";
 import type { VaultEntryRow } from "./mael-types";
+
+function vaultService(supabase: SupabaseClient): VaultService {
+  return new VaultService(new VaultRepository(supabase));
+}
 
 export const listVaultEntries = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<VaultEntryRow[]> => {
     const supabase = context.supabase as unknown as SupabaseClient;
-    const { data, error } = await supabase
-      .from("vault_entries")
-      .select("*")
-      .order("name", { ascending: true });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as VaultEntryRow[];
+    try {
+      return await vaultService(supabase).listForUser();
+    } catch (err) {
+      throw handleServiceError(err, { route: "vault.listVaultEntries", userId: context.userId });
+    }
   });
 
 export const createVaultEntry = createServerFn({ method: "POST" })
@@ -35,23 +41,11 @@ export const createVaultEntry = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as unknown as SupabaseClient;
-    const { data: row, error } = await supabase
-      .from("vault_entries")
-      .insert({
-        user_id: context.userId,
-        name: data.name,
-        service: data.service ?? null,
-        username: data.username ?? null,
-        domain: data.domain ?? null,
-        category: data.category ?? null,
-        password_ciphertext: data.password_ciphertext,
-        notes_ciphertext: data.notes_ciphertext ?? null,
-        strength_label: data.strength_label ?? null,
-      })
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
-    return row as VaultEntryRow;
+    try {
+      return await vaultService(supabase).create(context.userId, data);
+    } catch (err) {
+      throw handleServiceError(err, { route: "vault.createVaultEntry", userId: context.userId });
+    }
   });
 
 export const deleteVaultEntry = createServerFn({ method: "POST" })
@@ -59,11 +53,10 @@ export const deleteVaultEntry = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const supabase = context.supabase as unknown as SupabaseClient;
-    const { error } = await supabase
-      .from("vault_entries")
-      .delete()
-      .eq("id", data.id)
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    try {
+      await vaultService(supabase).delete(context.userId, data.id);
+      return { ok: true };
+    } catch (err) {
+      throw handleServiceError(err, { route: "vault.deleteVaultEntry", userId: context.userId });
+    }
   });

@@ -53,9 +53,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!ready) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
-        <img src={foolLogo} alt="O Louco" className="h-16 w-16 animate-pulse" />
+        <img src={foolLogo} alt="Mael" className="h-16 w-16 animate-pulse" />
         <p className="font-display text-sm tracking-[0.3em] text-muted-foreground uppercase">
-          Abrindo a tiragem…
+          Carregando…
         </p>
       </div>
     );
@@ -66,13 +66,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-4xl items-center gap-4 px-4">
           <Link to="/" className="flex items-center gap-2.5">
-            <img src={foolLogo} alt="O Louco" className="h-8 w-8" />
+            <img src={foolLogo} alt="Mael" className="h-8 w-8" />
             <div className="leading-none">
               <span className="font-display text-lg font-bold tracking-[0.18em] text-primary gold-glow">
                 MAEL
               </span>
               <span className="block text-[0.6rem] tracking-[0.28em] text-muted-foreground uppercase">
-                0 · O Louco
+                Assistente pessoal
               </span>
             </div>
           </Link>
