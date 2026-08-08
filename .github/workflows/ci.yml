@@ -21,8 +21,8 @@ jobs:
           cache: "npm"
 
       # O projeto tem package-lock.json (npm) e bun.lock (bun) lado a lado;
-      # npm ci é o fluxo oficial da CI porque o pipeline de deploy (Nitro/
-      # Cloudflare) e o restante da automação já assumem npm. bun.lock é
+      # npm ci é o fluxo oficial da CI e também corresponde ao build usado
+      # pela Vercel. bun.lock é
       # mantido apenas para quem preferir bun localmente — não é usado aqui
       # para evitar dois gerenciadores de pacote divergindo no lockfile.
       - name: Install dependencies

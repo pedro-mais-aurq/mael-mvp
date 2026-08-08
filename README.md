@@ -157,32 +157,45 @@ npm run build
 ## Deploy
 
 O projeto usa TanStack Start com SSR/server functions reais (autenticação,
-chat, tools) — **não é uma SPA estática**, então GitHub Pages não é uma
-opção adequada.
+chat e tools), portanto **não é uma SPA estática** e GitHub Pages não é um
+alvo adequado.
 
-A configuração de build (`@lovable.dev/vite-tanstack-config`, via Nitro) já
-gera saída para **Cloudflare Workers** por padrão
-(`.output/server/wrangler.json` é gerado automaticamente no build, preset
-`cloudflare-module`). Esse é o alvo de deploy documentado aqui porque:
+### Vercel (recomendado)
 
-- é compatível com SSR/server functions do TanStack Start;
-- é o preset que a própria configuração compartilhada do projeto já usa,
-  sem precisar de infraestrutura adicional.
+O projeto está preparado para deploy na **Vercel**. O
+`@lovable.dev/vite-tanstack-config` está em versão compatível com a detecção
+automática da Vercel e `vite.config.ts` desativa explicitamente o adapter de
+Cloudflare (`cloudflare: false`). A Vercel executa `npm run build` e publica o
+SSR/server functions como Vercel Functions.
 
-Para publicar:
+1. Importe este repositório na Vercel.
+2. Mantenha **Framework Preset: TanStack Start** (detecção automática).
+3. Use **Build Command: `npm run build`**.
+4. Cadastre as variáveis abaixo em **Project → Settings → Environment Variables**
+   para Production, Preview e Development conforme necessário:
 
-```sh
-npm run build
-npx wrangler deploy   # a partir de .output/server, com wrangler.json gerado
+```text
+SUPABASE_URL
+SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SERVICE_ROLE_KEY
+VITE_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY
+OPENROUTER_API_KEY
 ```
 
-Configure os mesmos segredos de `.env` como variáveis de ambiente/secrets
-do Worker (`wrangler secret put SUPABASE_SERVICE_ROLE_KEY`, etc.) — nunca
-no `wrangler.json` versionado.
+`VITE_SUPABASE_URL` deve receber o mesmo valor de `SUPABASE_URL`, e
+`VITE_SUPABASE_PUBLISHABLE_KEY` deve receber o mesmo valor de
+`SUPABASE_PUBLISHABLE_KEY`. As variáveis `VITE_*` são públicas e entram no
+bundle do navegador. **Nunca** use `SUPABASE_SERVICE_ROLE_KEY` ou
+`OPENROUTER_API_KEY` como variável `VITE_*`.
 
-GitHub continua sendo o repositório de código-fonte e o gatilho de CI
-(`.github/workflows/ci.yml`): install → lint → typecheck → test → build a
-cada push/PR em `main`.
+Não é necessário `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, Wrangler ou
+um workflow próprio de deploy. Com a integração Git da Vercel, pushes na branch
+de produção geram novos deployments automaticamente.
+
+GitHub continua sendo o repositório de código-fonte e executa o CI
+(`.github/workflows/ci.yml`): install → lint → typecheck → test → build em
+pushes/PRs para `main`.
 
 ## Limitações conhecidas do MVP
 

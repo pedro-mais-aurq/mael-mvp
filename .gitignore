@@ -12,6 +12,7 @@ dist/
 .wrangler/
 .tanstack/
 .vite/
+.vercel/
 *.tsbuildinfo
 
 # Supabase CLI local/link state (contém dados do projeto linkado)
