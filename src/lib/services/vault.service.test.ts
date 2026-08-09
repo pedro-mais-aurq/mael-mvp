@@ -57,3 +57,42 @@ describe("VaultService", () => {
     expect(searchMeta).toHaveBeenCalledWith("banco", 5);
   });
 });
+
+it("normaliza campos opcionais para valores compatíveis com o schema do banco", async () => {
+  const create = vi.fn(async (input) => ({
+    id: "vault-1",
+    user_id: input.userId,
+    name: input.name,
+    service: input.service,
+    username: input.username,
+    domain: input.domain,
+    category: input.category,
+    password_ciphertext: input.password_ciphertext,
+    notes_ciphertext: input.notes_ciphertext,
+    strength_label: input.strength_label,
+    created_at: new Date().toISOString(),
+  }));
+
+  const service = new VaultService(
+    fakeRepo({
+      create,
+    }),
+  );
+
+  await service.create("user-1", {
+    name: "GitHub",
+    password_ciphertext: "ciphertext",
+  });
+
+  expect(create).toHaveBeenCalledWith({
+    userId: "user-1",
+    name: "GitHub",
+    service: "",
+    username: "",
+    domain: "",
+    category: "geral",
+    password_ciphertext: "ciphertext",
+    notes_ciphertext: "",
+    strength_label: "muito_fraca",
+  });
+});

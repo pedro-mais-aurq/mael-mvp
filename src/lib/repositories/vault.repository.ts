@@ -5,15 +5,14 @@ import type { VaultEntryRow, VaultMetaEntry } from "../mael-types";
 export interface NewVaultEntryInput {
   userId: string;
   name: string;
-  service: string | null;
-  username: string | null;
-  domain: string | null;
-  category: string | null;
+  service: string;
+  username: string;
+  domain: string;
+  category: string;
   password_ciphertext: string;
-  notes_ciphertext: string | null;
-  strength_label: string | null;
+  notes_ciphertext: string;
+  strength_label: string;
 }
-
 export class VaultRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 

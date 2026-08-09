@@ -3,13 +3,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { RemindersRepository } from "./repositories/reminders.repository";
+import { TasksRepository } from "./repositories/tasks.repository";
+import { TaskService } from "./services/task.service";
 import { ReminderService } from "./services/reminder.service";
 import { handleServiceError } from "./core/exceptions";
 import type { ReminderRow } from "./mael-types";
 
 function reminderService(supabase: SupabaseClient): ReminderService {
-  return new ReminderService(new RemindersRepository(supabase));
+  return new ReminderService(new TaskService(new TasksRepository(supabase)));
 }
 
 export const listReminders = createServerFn({ method: "GET" })
@@ -17,7 +18,7 @@ export const listReminders = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<ReminderRow[]> => {
     const supabase = context.supabase as unknown as SupabaseClient;
     try {
-      return await reminderService(supabase).listForUser();
+      return await reminderService(supabase).listForUser(context.userId);
     } catch (err) {
       throw handleServiceError(err, { route: "reminders.listReminders", userId: context.userId });
     }

@@ -13,10 +13,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ChatRepository } from "./repositories/chat.repository";
 import { TasksRepository } from "./repositories/tasks.repository";
-import { RemindersRepository } from "./repositories/reminders.repository";
 import { VaultRepository } from "./repositories/vault.repository";
 import { TaskService } from "./services/task.service";
-import { ReminderService } from "./services/reminder.service";
 import { VaultService } from "./services/vault.service";
 import { ChatService } from "./services/chat.service";
 import { TaskTool } from "./tools/task.tool";
@@ -26,8 +24,9 @@ import { createDefaultLLMProvider } from "./providers/llm.provider";
 import type { SendChatResult } from "./mael-types";
 
 function buildChatService(supabase: SupabaseClient): ChatService {
-  const taskTool = new TaskTool(new TaskService(new TasksRepository(supabase)));
-  const reminderTool = new ReminderTool(new ReminderService(new RemindersRepository(supabase)));
+  const taskService = new TaskService(new TasksRepository(supabase));
+  const taskTool = new TaskTool(taskService);
+  const reminderTool = new ReminderTool(taskService);
   const vaultSearchTool = new VaultSearchTool(new VaultService(new VaultRepository(supabase)));
 
   return new ChatService(

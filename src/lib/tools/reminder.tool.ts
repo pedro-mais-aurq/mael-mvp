@@ -1,9 +1,9 @@
-import type { ReminderService } from "../services/reminder.service";
+import type { TaskService } from "../services/task.service";
 import { logger } from "../core/logger";
 import { asString, type ToolResult } from "./types";
 
 export class ReminderTool {
-  constructor(private readonly reminderService: ReminderService) {}
+  constructor(private readonly taskService: TaskService) {}
 
   async createFromArgs(userId: string, args: Record<string, unknown>): Promise<ToolResult> {
     const title = asString(args["title"]);
@@ -18,18 +18,21 @@ export class ReminderTool {
     }
 
     try {
-      const reminder = await this.reminderService.create(userId, {
+      const task = await this.taskService.create(userId, {
         title,
-        notes: asString(args["notes"]),
+        description: asString(args["notes"]),
+        category: "geral",
+        priority: "media",
         remind_at: remindAtRaw,
+        reminder_enabled: true,
       });
       return {
         ok: true,
         reply: "",
         toolOutput: {
           kind: "reminder_created",
-          title: reminder.title,
-          remind_at: reminder.remind_at,
+          title: task.title,
+          remind_at: task.remind_at ?? remindAtRaw,
         },
       };
     } catch (err) {

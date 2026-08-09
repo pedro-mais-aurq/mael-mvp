@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ListChecks, Bell, KeyRound, MessageCircle, LogOut } from "lucide-react";
+import { ListChecks, KeyRound, MessageCircle, LogOut } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { getProfile } from "@/lib/profile.functions";
@@ -13,7 +13,6 @@ const foolLogo = new URL("../assets/fool-logo.svg", import.meta.url).href;
 const NAV = [
   { to: "/", label: "Conversa", icon: MessageCircle },
   { to: "/tarefas", label: "Tarefas", icon: ListChecks },
-  { to: "/lembretes", label: "Lembretes", icon: Bell },
   { to: "/cofre", label: "Cofre", icon: KeyRound },
 ] as const;
 

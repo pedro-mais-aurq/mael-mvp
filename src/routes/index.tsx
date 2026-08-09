@@ -192,7 +192,7 @@ function ChatPage() {
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
         toast.success("Tarefa criada.");
       } else if (intent === "create_reminder") {
-        queryClient.invalidateQueries({ queryKey: ["reminders"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
         toast.success("Lembrete criado.");
       }
     } catch (err) {

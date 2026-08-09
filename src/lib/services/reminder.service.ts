@@ -1,6 +1,5 @@
-import { RemindersRepository } from "../repositories/reminders.repository";
-import { ValidationError } from "../core/exceptions";
-import type { ReminderRow } from "../mael-types";
+import type { ReminderRow, TaskRow } from "../mael-types";
+import { TaskService } from "./task.service";
 
 export interface CreateReminderInput {
   title: string;
@@ -8,40 +7,60 @@ export interface CreateReminderInput {
   remind_at: string;
 }
 
+/**
+ * @deprecated Adapter de compatibilidade P2. Remover junto dos endpoints
+ * legados na P3; toda persistência já é delegada ao domínio Task.
+ */
 export class ReminderService {
-  constructor(private readonly repo: RemindersRepository) {}
+  constructor(private readonly taskService: TaskService) {}
 
-  listForUser(): Promise<ReminderRow[]> {
-    return this.repo.listByUser();
+  async listForUser(userId: string): Promise<ReminderRow[]> {
+    const tasks = await this.taskService.listReminderTasks(userId);
+    return tasks.map(toReminderRow);
   }
 
-  create(userId: string, input: CreateReminderInput): Promise<ReminderRow> {
-    const remindAt = new Date(input.remind_at);
-    if (Number.isNaN(remindAt.getTime())) {
-      return Promise.reject(new ValidationError("Data do lembrete inválida."));
-    }
-    return this.repo.create({
-      userId,
+  async create(userId: string, input: CreateReminderInput): Promise<ReminderRow> {
+    const task = await this.taskService.create(userId, {
       title: input.title,
-      notes: input.notes ?? "",
-      remind_at: remindAt.toISOString(),
+      description: input.notes ?? "",
+      category: "geral",
+      priority: "media",
+      remind_at: input.remind_at,
+      reminder_enabled: true,
     });
+    return toReminderRow(task);
   }
 
   setActive(userId: string, id: string, active: boolean): Promise<void> {
-    return this.repo.setActive(userId, id, active);
+    return this.taskService.setReminderEnabled(userId, id, active);
   }
 
   delete(userId: string, id: string): Promise<void> {
-    return this.repo.delete(userId, id);
+    return this.taskService.clearReminder(userId, id);
   }
 
-  /** Etapa 9: usado pelo Scheduler para descobrir o que está vencido. */
-  listDue(now: Date): Promise<ReminderRow[]> {
-    return this.repo.listDueUnnotified(now.toISOString());
+  async listDue(now: Date): Promise<ReminderRow[]> {
+    const tasks = await this.taskService.listDueReminders(now);
+    return tasks.map(toReminderRow);
   }
 
   markNotified(id: string, now: Date): Promise<void> {
-    return this.repo.markNotified(id, now.toISOString());
+    return this.taskService.markNotified(id, now);
   }
+}
+
+export function toReminderRow(task: TaskRow): ReminderRow {
+  if (!task.remind_at) {
+    throw new Error("Uma task sem remind_at não pode ser adaptada para ReminderRow.");
+  }
+  return {
+    id: task.id,
+    user_id: task.user_id,
+    title: task.title,
+    notes: task.description,
+    remind_at: task.remind_at,
+    active: task.reminder_enabled ?? true,
+    notified_at: task.notified_at ?? null,
+    created_at: task.created_at,
+  };
 }

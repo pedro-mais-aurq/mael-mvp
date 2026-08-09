@@ -3,18 +3,25 @@ import { ChatService } from "./chat.service";
 import type { ChatRepository } from "../repositories/chat.repository";
 import type { LLMProvider } from "../providers/llm.provider";
 import type { TaskTool } from "../tools/task.tool";
-import type { ReminderTool } from "../tools/reminder.tool";
+import { ReminderTool } from "../tools/reminder.tool";
 import type { VaultSearchTool } from "../tools/vault-search.tool";
-import type { ChatMessageDTO } from "../mael-types";
+import type { ChatMessageDTO, JsonValue, TaskRow } from "../mael-types";
+import { TaskService } from "./task.service";
+import type { NewTaskInput, TasksRepository } from "../repositories/tasks.repository";
 
-function makeMessage(role: "user" | "assistant", content: string, intent?: string): ChatMessageDTO {
+function makeMessage(
+  role: "user" | "assistant",
+  content: string,
+  intent?: string,
+  toolOutput: JsonValue | null = null,
+): ChatMessageDTO {
   return {
     id: crypto.randomUUID(),
     session_id: "session-1",
     role,
     content,
     intent: intent ?? null,
-    tool_output: null,
+    tool_output: toolOutput,
     created_at: new Date().toISOString(),
   };
 }
@@ -29,7 +36,8 @@ function fakeRepo(): ChatRepository {
       role: "user" | "assistant";
       content: string;
       intent?: string;
-    }) => makeMessage(input.role, input.content, input.intent),
+      toolOutput?: JsonValue | null;
+    }) => makeMessage(input.role, input.content, input.intent, input.toolOutput ?? null),
   } as unknown as ChatRepository;
 }
 
@@ -87,6 +95,76 @@ describe("ChatService", () => {
     expect(taskTool.createFromArgs).toHaveBeenCalledWith("user-1", { title: "Comprar pão" });
     expect(result.assistant_message.intent).toBe("create_task");
     expect(result.assistant_message.content).toBe("Anotei: comprar pão.");
+  });
+
+  it("mantém create_reminder e o encaminha ao domínio Task", async () => {
+    const llm: LLMProvider = {
+      complete: async () =>
+        JSON.stringify({
+          intent: "create_reminder",
+          args: {
+            title: "Consulta",
+            notes: "Dentista",
+            remind_at: "2026-08-10T18:00:00.000Z",
+          },
+          assistant_reply: "Lembrete criado para a consulta.",
+        }),
+    };
+    const create = vi.fn(async (input: NewTaskInput): Promise<TaskRow> => ({
+      id: "task-reminder-1",
+      user_id: input.userId,
+      title: input.title,
+      description: input.description,
+      category: input.category,
+      priority: input.priority,
+      due_date: input.due_date,
+      due_time: input.due_time,
+      due_at: input.due_at,
+      remind_at: input.remind_at,
+      notified_at: input.notified_at,
+      reminder_enabled: input.reminder_enabled,
+      completed: false,
+      created_at: "2026-08-08T10:00:00.000Z",
+    }));
+    const taskRepo = {
+      listByUser: vi.fn(async () => []),
+      create,
+      setCompleted: vi.fn(async () => {}),
+      delete: vi.fn(async () => {}),
+      listRemindersByUser: vi.fn(async () => []),
+      setReminderEnabled: vi.fn(async () => {}),
+      clearReminder: vi.fn(async () => {}),
+      listDueUnnotified: vi.fn(async () => []),
+      markNotified: vi.fn(async () => {}),
+    } as unknown as TasksRepository;
+
+    const service = new ChatService(
+      fakeRepo(),
+      llm,
+      {} as TaskTool,
+      new ReminderTool(new TaskService(taskRepo)),
+      {} as VaultSearchTool,
+    );
+    const result = await service.orchestrate({
+      userId: "user-1",
+      userName: "Ana",
+      message: "me lembra da consulta",
+      sessionId: null,
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Consulta",
+        description: "Dentista",
+        remind_at: "2026-08-10T18:00:00.000Z",
+        reminder_enabled: true,
+      }),
+    );
+    expect(result.assistant_message.intent).toBe("create_reminder");
+    expect(result.assistant_message.tool_output).toMatchObject({
+      kind: "reminder_created",
+      title: "Consulta",
+    });
   });
 
   it("downgrades to chat intent when a tool reports failure", async () => {

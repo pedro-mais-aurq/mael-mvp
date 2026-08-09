@@ -17,6 +17,7 @@ import {
   vaultVerifier,
 } from "@/lib/vault-crypto";
 import type { VaultEntryRow } from "@/lib/mael-types";
+import { deriveVaultStatus, type VaultStatus } from "@/lib/vault-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,8 +47,6 @@ export const Route = createFileRoute("/cofre")({
   component: VaultPage,
 });
 
-type VaultStatus = "loading" | "setup" | "locked" | "unlocked";
-
 function VaultPage() {
   const queryClient = useQueryClient();
   const [vaultKey, setVaultKey] = useState<CryptoKey | null>(null);
@@ -58,18 +57,22 @@ function VaultPage() {
   const [busy, setBusy] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  const { data: profile, isLoading: profileLoading } = useQuery({
+  const {
+    data: profile,
+    isLoading: profileLoading,
+    isError: profileError,
+    refetch: refetchProfile,
+  } = useQuery({
     queryKey: ["profile"],
     queryFn: () => getProfile(),
   });
 
-  const status: VaultStatus = vaultKey
-    ? "unlocked"
-    : profileLoading
-      ? "loading"
-      : profile?.master_verifier
-        ? "locked"
-        : "setup";
+  const status: VaultStatus = deriveVaultStatus({
+    vaultKey,
+    profileLoading,
+    profileError,
+    profile,
+  });
 
   const { data: entries, isLoading: entriesLoading } = useQuery({
     queryKey: ["vault"],
@@ -179,6 +182,22 @@ function VaultPage() {
           <p className="py-16 text-center text-sm text-muted-foreground italic">
             Verificando o status do cofre…
           </p>
+        )}
+
+        {status === "error" && (
+          <div className="panel-card mx-auto mt-8 max-w-sm space-y-4 p-6 pt-8 text-center">
+            <Lock className="mx-auto h-8 w-8 text-destructive" />
+            <h2 className="font-display mt-3 text-sm tracking-[0.25em] text-primary uppercase">
+              Não consegui verificar o cofre
+            </h2>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Houve um erro ao carregar seu perfil. Por segurança, não mostramos a criação de senha
+              mestra enquanto isso — isso evitaria sobrescrever um cofre que você já possa ter.
+            </p>
+            <Button variant="outline" className="w-full" onClick={() => refetchProfile()}>
+              Tentar novamente
+            </Button>
+          </div>
         )}
 
         {status === "setup" && (

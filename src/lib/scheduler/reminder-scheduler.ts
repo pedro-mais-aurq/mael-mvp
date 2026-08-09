@@ -18,33 +18,33 @@
  * aberto no navegador (o que o MVP atual efetivamente não garante).
  */
 
-import type { ReminderService } from "../services/reminder.service";
+import type { TaskService } from "../services/task.service";
 import type { NotificationProvider } from "../providers/notification.provider";
 import { logger } from "../core/logger";
 
 export class ReminderScheduler {
   constructor(
-    private readonly reminderService: ReminderService,
+    private readonly taskService: TaskService,
     private readonly notifications: NotificationProvider,
   ) {}
 
   async runDueReminders(now: Date = new Date()): Promise<{ processed: number }> {
-    const due = await this.reminderService.listDue(now);
+    const due = await this.taskService.listDueReminders(now);
     let processed = 0;
 
-    for (const reminder of due) {
+    for (const task of due) {
       try {
         await this.notifications.send({
-          userId: reminder.user_id,
-          title: reminder.title,
-          body: reminder.notes ?? "",
+          userId: task.user_id,
+          title: task.title,
+          body: task.description ?? "",
         });
-        await this.reminderService.markNotified(reminder.id, now);
+        await this.taskService.markNotified(task.id, now);
         processed++;
       } catch (err) {
         logger.error("Falha ao processar lembrete vencido", err, {
           route: "reminder-scheduler",
-          reminderId: reminder.id,
+          taskId: task.id,
         });
       }
     }

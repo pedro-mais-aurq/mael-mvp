@@ -97,8 +97,11 @@ ambiente de deploy.
 ## Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. Aplique as migrations em `supabase/migrations/` (nesta ordem, elas já
-   estão numeradas cronologicamente):
+2. Aplique as migrations em `supabase/migrations/` na ordem cronológica.
+   A P2 possui uma etapa principal e outra de finalização que exigem deploy e
+   validação entre elas; por isso, não rode um único `db push` se ambas ainda
+   estiverem pendentes. Consulte [P2_ROLLOUT.md](./P2_ROLLOUT.md) antes de
+   aplicar a P2:
    ```sh
    npx supabase login
    npx supabase link --project-ref <seu-project-ref>
@@ -124,6 +127,11 @@ ambiente de deploy.
   `rate_limit_events` (com RLS e policy própria). É **aditiva e
   idempotente** — segura para rodar mais de uma vez ou sobre um banco já
   em produção.
+- `20260809010000_alpha_0_1_unify_tasks_reminders.sql`: migration principal
+  da P2, com backfill para `tasks` e ponte temporária `reminders → tasks`.
+- `20260809020000_alpha_0_1_finalize_task_reminder_unification.sql`: remove
+  somente a trigger e a função temporárias. Deve ser aplicada apenas depois do
+  deploy e da validação do código P2, conforme [P2_ROLLOUT.md](./P2_ROLLOUT.md).
 
 Se o app em produção mostrar
 `Could not find the table 'public.rate_limit_events' in the schema cache`,

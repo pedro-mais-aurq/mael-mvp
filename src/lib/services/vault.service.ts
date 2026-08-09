@@ -40,13 +40,13 @@ export class VaultService {
     return this.repo.create({
       userId,
       name: input.name,
-      service: input.service ?? null,
-      username: input.username ?? null,
-      domain: input.domain ?? null,
-      category: input.category ?? null,
+      service: input.service ?? "",
+      username: input.username ?? "",
+      domain: input.domain ?? "",
+      category: input.category ?? "geral",
       password_ciphertext: input.password_ciphertext,
-      notes_ciphertext: input.notes_ciphertext ?? null,
-      strength_label: input.strength_label ?? null,
+      notes_ciphertext: input.notes_ciphertext ?? "",
+      strength_label: input.strength_label ?? "muito_fraca",
     });
   }
 

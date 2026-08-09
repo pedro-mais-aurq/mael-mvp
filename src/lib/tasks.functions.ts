@@ -17,7 +17,7 @@ export const listTasks = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<TaskRow[]> => {
     const supabase = context.supabase as unknown as SupabaseClient;
     try {
-      return await taskService(supabase).listForUser();
+      return await taskService(supabase).listForUser(context.userId);
     } catch (err) {
       throw handleServiceError(err, { route: "tasks.listTasks", userId: context.userId });
     }
@@ -40,6 +40,9 @@ export const createTask = createServerFn({ method: "POST" })
           .string()
           .regex(/^\d{2}:\d{2}$/)
           .nullish(),
+        due_at: z.string().datetime({ offset: true }).nullish(),
+        remind_at: z.string().datetime({ offset: true }).nullish(),
+        reminder_enabled: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -62,6 +65,40 @@ export const toggleTask = createServerFn({ method: "POST" })
       return { ok: true };
     } catch (err) {
       throw handleServiceError(err, { route: "tasks.toggleTask", userId: context.userId });
+    }
+  });
+
+export const setTaskReminderEnabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z.object({ taskId: z.string().uuid(), enabled: z.boolean() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as SupabaseClient;
+    try {
+      await taskService(supabase).setReminderEnabled(context.userId, data.taskId, data.enabled);
+      return { ok: true };
+    } catch (err) {
+      throw handleServiceError(err, {
+        route: "tasks.setTaskReminderEnabled",
+        userId: context.userId,
+      });
+    }
+  });
+
+export const clearTaskReminder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ taskId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const supabase = context.supabase as unknown as SupabaseClient;
+    try {
+      await taskService(supabase).clearReminder(context.userId, data.taskId);
+      return { ok: true };
+    } catch (err) {
+      throw handleServiceError(err, {
+        route: "tasks.clearTaskReminder",
+        userId: context.userId,
+      });
     }
   });
 

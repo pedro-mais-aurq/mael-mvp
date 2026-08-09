@@ -80,6 +80,7 @@ export type Database = {
           master_salt: string | null;
           master_verifier: string | null;
           name: string;
+          timezone: string | null;
           updated_at: string;
         };
         Insert: {
@@ -88,6 +89,7 @@ export type Database = {
           master_salt?: string | null;
           master_verifier?: string | null;
           name?: string;
+          timezone?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -96,6 +98,7 @@ export type Database = {
           master_salt?: string | null;
           master_verifier?: string | null;
           name?: string;
+          timezone?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -106,6 +109,7 @@ export type Database = {
           created_at: string;
           id: string;
           notes: string;
+          notified_at: string | null;
           remind_at: string;
           title: string;
           updated_at: string;
@@ -116,6 +120,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           notes?: string;
+          notified_at?: string | null;
           remind_at: string;
           title: string;
           updated_at?: string;
@@ -126,6 +131,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           notes?: string;
+          notified_at?: string | null;
           remind_at?: string;
           title?: string;
           updated_at?: string;
@@ -140,10 +146,15 @@ export type Database = {
           completed_at: string | null;
           created_at: string;
           description: string;
+          due_at: string | null;
           due_date: string | null;
           due_time: string | null;
           id: string;
+          legacy_reminder_id: string | null;
+          notified_at: string | null;
           priority: string;
+          remind_at: string | null;
+          reminder_enabled: boolean;
           title: string;
           updated_at: string;
           user_id: string;
@@ -154,10 +165,15 @@ export type Database = {
           completed_at?: string | null;
           created_at?: string;
           description?: string;
+          due_at?: string | null;
           due_date?: string | null;
           due_time?: string | null;
           id?: string;
+          legacy_reminder_id?: string | null;
+          notified_at?: string | null;
           priority?: string;
+          remind_at?: string | null;
+          reminder_enabled?: boolean;
           title: string;
           updated_at?: string;
           user_id: string;
@@ -168,10 +184,15 @@ export type Database = {
           completed_at?: string | null;
           created_at?: string;
           description?: string;
+          due_at?: string | null;
           due_date?: string | null;
           due_time?: string | null;
           id?: string;
+          legacy_reminder_id?: string | null;
+          notified_at?: string | null;
           priority?: string;
+          remind_at?: string | null;
+          reminder_enabled?: boolean;
           title?: string;
           updated_at?: string;
           user_id?: string;
