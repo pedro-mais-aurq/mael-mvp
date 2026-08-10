@@ -46,15 +46,15 @@ describe("VaultService", () => {
       name: "GitHub",
       password_ciphertext: "blob",
     });
-    expect(findByNameOrService).toHaveBeenCalledWith("GitHub", null);
+    expect(findByNameOrService).toHaveBeenCalledWith("user-1", "GitHub", null);
     expect(entry).toBeTruthy(); // creation still succeeds
   });
 
   it("search delegates to the repository with metadata only", async () => {
     const searchMeta = vi.fn(async (): Promise<VaultMetaEntry[]> => []);
     const service = new VaultService(fakeRepo({ searchMeta }));
-    await service.search("banco", 5);
-    expect(searchMeta).toHaveBeenCalledWith("banco", 5);
+    await service.search("user-1", "banco", 5);
+    expect(searchMeta).toHaveBeenCalledWith("user-1", "banco", 5);
   });
 });
 

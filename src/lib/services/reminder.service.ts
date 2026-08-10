@@ -31,12 +31,12 @@ export class ReminderService {
     return toReminderRow(task);
   }
 
-  setActive(userId: string, id: string, active: boolean): Promise<void> {
-    return this.taskService.setReminderEnabled(userId, id, active);
+  async setActive(userId: string, id: string, active: boolean): Promise<void> {
+    await this.taskService.setReminderEnabled(userId, id, active);
   }
 
-  delete(userId: string, id: string): Promise<void> {
-    return this.taskService.clearReminder(userId, id);
+  async delete(userId: string, id: string): Promise<void> {
+    await this.taskService.clearReminder(userId, id);
   }
 
   async listDue(now: Date): Promise<ReminderRow[]> {

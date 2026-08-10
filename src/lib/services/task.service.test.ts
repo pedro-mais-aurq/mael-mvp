@@ -25,14 +25,33 @@ function taskFromInput(input: NewTaskInput): TaskRow {
 }
 
 function fakeRepo(overrides: Partial<TasksRepository> = {}): TasksRepository {
+  const existing = taskFromInput({
+    userId: "user-1",
+    title: "Consulta",
+    description: "Dentista",
+    category: "saúde",
+    priority: "media",
+    due_date: null,
+    due_time: null,
+    due_at: null,
+    remind_at: null,
+    notified_at: null,
+    reminder_enabled: true,
+    legacy_reminder_id: null,
+  });
   return {
     listByUser: vi.fn(async () => []),
+    listForTool: vi.fn(async () => []),
+    listForResolution: vi.fn(async () => []),
+    listLegacyDueDate: vi.fn(async () => []),
+    findById: vi.fn(async () => existing),
     create: vi.fn(async (input: NewTaskInput) => taskFromInput(input)),
-    setCompleted: vi.fn(async () => {}),
-    delete: vi.fn(async () => {}),
+    update: vi.fn(async () => existing),
+    setCompleted: vi.fn(async () => existing),
+    delete: vi.fn(async () => existing),
     listRemindersByUser: vi.fn(async () => []),
-    setReminderEnabled: vi.fn(async () => {}),
-    clearReminder: vi.fn(async () => {}),
+    setReminderEnabled: vi.fn(async () => existing),
+    clearReminder: vi.fn(async () => existing),
     listDueUnnotified: vi.fn(async () => []),
     markNotified: vi.fn(async () => {}),
     ...overrides,
@@ -130,6 +149,133 @@ describe("TaskService", () => {
     expect(repo.delete).not.toHaveBeenCalled();
     expect(repo.listDueUnnotified).toHaveBeenCalledWith("2026-08-10T18:00:00.000Z");
     expect(repo.markNotified).toHaveBeenCalledWith("task-1", "2026-08-10T18:00:00.000Z");
+  });
+
+  it("lista com limite defensivo e informa truncamento", async () => {
+    const rows = Array.from({ length: 3 }, (_, index) => ({
+      ...taskFromInput({
+        userId: "user-1",
+        title: `Task ${index}`,
+        description: "",
+        category: "geral",
+        priority: "media",
+        due_date: null,
+        due_time: null,
+        due_at: null,
+        remind_at: null,
+        notified_at: null,
+        reminder_enabled: true,
+        legacy_reminder_id: null,
+      }),
+      id: `task-${index}`,
+    }));
+    const repo = fakeRepo({ listForTool: vi.fn(async () => rows) });
+    const result = await new TaskService(repo).listForTool("user-1", {
+      status: "all",
+      has_reminder: false,
+      limit: 2,
+    });
+
+    expect(repo.listForTool).toHaveBeenCalledWith("user-1", {
+      status: "all",
+      hasReminder: false,
+      query: null,
+      dueFrom: null,
+      dueTo: null,
+      limit: 3,
+    });
+    expect(result.tasks).toHaveLength(2);
+    expect(result.truncated).toBe(true);
+  });
+
+  it("mescla due_at moderno e due_date legado sem inventar timestamp", async () => {
+    const modern = {
+      ...taskFromInput({
+        userId: "user-1",
+        title: "Prazo moderno",
+        description: "",
+        category: "geral",
+        priority: "media",
+        due_date: null,
+        due_time: null,
+        due_at: "2026-08-10T12:00:00.000Z",
+        remind_at: null,
+        notified_at: null,
+        reminder_enabled: true,
+        legacy_reminder_id: null,
+      }),
+      id: "modern",
+    };
+    const legacy = {
+      ...modern,
+      id: "legacy",
+      title: "Prazo legado",
+      due_at: null,
+      due_date: "2026-08-10",
+      due_time: null,
+    };
+    const repo = fakeRepo({
+      listForTool: vi.fn(async () => [modern]),
+      listLegacyDueDate: vi.fn(async () => [legacy]),
+    });
+
+    const result = await new TaskService(repo).listForTool("user-1", {
+      status: "open",
+      due_from: "2026-08-10T03:00:00.000Z",
+      due_to: "2026-08-11T02:59:59.999Z",
+      legacy_due_date: "2026-08-10",
+      limit: 50,
+    });
+
+    expect(result.tasks.map((task) => task.id)).toEqual(["modern", "legacy"]);
+    expect(result.tasks.find((task) => task.id === "legacy")).toMatchObject({
+      due_date: "2026-08-10",
+      due_at: null,
+    });
+    expect(repo.listLegacyDueDate).toHaveBeenCalledWith("user-1", "2026-08-10", {
+      status: "open",
+      hasReminder: null,
+      query: null,
+      limit: 51,
+    });
+  });
+
+  it("aplica somente campos permitidos e diferencia ausente de null", async () => {
+    const repo = fakeRepo();
+    const service = new TaskService(repo);
+    await service.update("user-1", "task-1", {
+      description: null,
+      category: null,
+      due_at: null,
+      remind_at: "2026-08-10T09:00:00-03:00",
+    });
+
+    expect(repo.update).toHaveBeenCalledWith("user-1", "task-1", {
+      description: "",
+      category: "geral",
+      due_at: null,
+      remind_at: "2026-08-10T12:00:00.000Z",
+      notified_at: null,
+      reminder_enabled: true,
+    });
+    expect(vi.mocked(repo.update).mock.calls[0]?.[2] as Record<string, unknown>).not.toHaveProperty(
+      "title",
+    );
+  });
+
+  it("trata zero linhas afetadas como not found", async () => {
+    const repo = fakeRepo({
+      update: vi.fn(async () => null),
+      setCompleted: vi.fn(async () => null),
+      delete: vi.fn(async () => null),
+    });
+    const service = new TaskService(repo);
+
+    await expect(service.update("user-1", "task-x", { title: "X" })).rejects.toThrow(
+      "não encontrada",
+    );
+    await expect(service.setCompleted("user-1", "task-x", true)).rejects.toThrow("não encontrada");
+    await expect(service.delete("user-1", "task-x")).rejects.toThrow("não encontrada");
   });
 
   it("parseTitleOrThrow e normalizePriority preservam compatibilidade do TaskTool", () => {

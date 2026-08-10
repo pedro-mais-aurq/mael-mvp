@@ -49,15 +49,18 @@ type ToolOutput =
       title?: string;
       due_date?: string | null;
       due_time?: string | null;
+      due_at?: string | null;
       priority?: string;
       category?: string | null;
     }
   | { kind: "reminder_created"; title?: string; remind_at?: string }
   | {
-      kind: "vault_matches";
-      query?: string;
-      entries?: { name?: string; service?: string | null; username?: string | null }[];
-    };
+      kind: "task_updated" | "task_completed" | "task_deleted";
+      task?: { title?: string; completed?: boolean };
+    }
+  | { kind: "task_list"; count?: number; truncated?: boolean }
+  | { kind: "vault_matches"; match_count?: number }
+  | { kind: "tool_results"; results?: { tool?: string; output?: ToolOutput }[] };
 
 function ToolOutputCard({ output }: { output: ToolOutput }) {
   if (output.kind === "task_created") {
@@ -68,7 +71,8 @@ function ToolOutputCard({ output }: { output: ToolOutput }) {
         </span>
         <p className="mt-0.5 font-medium">{String(output.title ?? "")}</p>
         <p className="text-xs text-muted-foreground">
-          {[output.due_date, output.due_time].filter(Boolean).join(" · ") || "sem data"}
+          {[output.due_at ?? output.due_date, output.due_time].filter(Boolean).join(" · ") ||
+            "sem data"}
           {output.priority ? ` · prioridade ${String(output.priority)}` : ""}
         </p>
       </div>
@@ -90,27 +94,64 @@ function ToolOutputCard({ output }: { output: ToolOutput }) {
       </div>
     );
   }
-  if (output.kind === "vault_matches" && Array.isArray(output.entries)) {
-    const entries = output.entries as {
-      name?: string;
-      service?: string | null;
-      username?: string | null;
-    }[];
-    if (entries.length === 0) return null;
+  if (output.kind === "vault_matches" && typeof output.match_count === "number") {
+    const count = Math.max(0, Math.trunc(output.match_count));
     return (
       <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
         <span className="font-display text-[0.65rem] tracking-[0.25em] text-primary uppercase">
-          Encontrado no cofre
+          Cofre consultado
         </span>
-        <ul className="mt-1 space-y-1">
-          {entries.map((e, i) => (
-            <li key={i} className="flex items-baseline gap-2">
-              <span className="text-primary">•</span>
-              <span className="font-medium">{e.service ?? e.name}</span>
-              {e.username && <span className="text-xs text-muted-foreground">{e.username}</span>}
-            </li>
-          ))}
-        </ul>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {count} resultado{count === 1 ? "" : "s"} encontrado{count === 1 ? "" : "s"}
+        </p>
+      </div>
+    );
+  }
+  if (
+    (output.kind === "task_updated" ||
+      output.kind === "task_completed" ||
+      output.kind === "task_deleted") &&
+    output.task
+  ) {
+    const label =
+      output.kind === "task_updated"
+        ? "Tarefa atualizada"
+        : output.kind === "task_deleted"
+          ? "Tarefa excluída"
+          : output.task.completed
+            ? "Tarefa concluída"
+            : "Tarefa reaberta";
+    return (
+      <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+        <span className="font-display text-[0.65rem] tracking-[0.25em] text-primary uppercase">
+          {label}
+        </span>
+        {output.task.title && <p className="mt-0.5 font-medium">{output.task.title}</p>}
+      </div>
+    );
+  }
+  if (output.kind === "task_list" && typeof output.count === "number") {
+    const count = Math.max(0, Math.trunc(output.count));
+    return (
+      <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+        <span className="font-display text-[0.65rem] tracking-[0.25em] text-primary uppercase">
+          Tarefas consultadas
+        </span>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {count} resultado{count === 1 ? "" : "s"}
+          {output.truncated ? " (lista limitada)" : ""}
+        </p>
+      </div>
+    );
+  }
+  if (output.kind === "tool_results" && Array.isArray(output.results)) {
+    return (
+      <div className="mt-2">
+        {output.results.map((result, index) =>
+          result.output ? (
+            <ToolOutputCard key={`${result.tool ?? "tool"}-${index}`} output={result.output} />
+          ) : null,
+        )}
       </div>
     );
   }
@@ -179,7 +220,11 @@ function ChatPage() {
 
     try {
       const result = await sendChat({
-        data: { message, session_id: sessionIdRef.current },
+        data: {
+          message,
+          session_id: sessionIdRef.current,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
       });
       sessionIdRef.current = result.session_id;
       setMessages((prev) => [
@@ -187,13 +232,21 @@ function ChatPage() {
         result.user_message,
         result.assistant_message,
       ]);
-      const intent = result.assistant_message.intent;
-      if (intent === "create_task") {
+      if (result.mutates_tasks) {
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        toast.success("Tarefa criada.");
-      } else if (intent === "create_reminder") {
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        toast.success("Lembrete criado.");
+        const tools = result.executed_tools ?? [];
+        const lastMutation = [...tools]
+          .reverse()
+          .find((tool) =>
+            ["create_task", "update_task", "set_task_completed", "delete_task"].includes(tool),
+          );
+        const messages: Record<string, string> = {
+          create_task: "Tarefa criada.",
+          update_task: "Tarefa atualizada.",
+          set_task_completed: "Estado da tarefa atualizado.",
+          delete_task: "Tarefa excluída.",
+        };
+        if (lastMutation) toast.success(messages[lastMutation]);
       }
     } catch (err) {
       console.error(err);

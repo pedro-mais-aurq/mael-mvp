@@ -6,6 +6,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { orchestrateChat } from "./chat.server";
 import { handleServiceError } from "./core/exceptions";
 import { enforceRateLimit } from "./core/rate-limit";
+import { resolveTimezone } from "./chat/timezone";
 import type { SendChatResult } from "./mael-types";
 
 export const sendChat = createServerFn({ method: "POST" })
@@ -15,6 +16,7 @@ export const sendChat = createServerFn({ method: "POST" })
       .object({
         message: z.string().trim().min(1).max(4000),
         session_id: z.string().uuid().nullish(),
+        timezone: z.string().trim().min(1).max(100).nullish(),
       })
       .parse(data),
   )
@@ -30,7 +32,7 @@ export const sendChat = createServerFn({ method: "POST" })
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("name")
+        .select("name, timezone")
         .eq("id", context.userId)
         .maybeSingle();
 
@@ -40,6 +42,10 @@ export const sendChat = createServerFn({ method: "POST" })
         userName: (profile?.name as string | null) ?? "usuário",
         message: data.message,
         sessionId: data.session_id ?? null,
+        timezone: resolveTimezone(
+          data.timezone,
+          (profile?.timezone as string | null | undefined) ?? null,
+        ),
       });
     } catch (err) {
       throw handleServiceError(err, { route: "chat.sendChat", userId: context.userId });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { TasksRepository, type NewTaskInput } from "./tasks.repository";
+import { TasksRepository, type NewTaskInput, type TaskUpdatePatch } from "./tasks.repository";
 
 interface RecordedCall {
   method: string;
@@ -55,6 +55,14 @@ class FluentQuery implements PromiseLike<DatabaseResult> {
     return this.record("lte", args);
   }
 
+  gte(...args: unknown[]): this {
+    return this.record("gte", args);
+  }
+
+  ilike(...args: unknown[]): this {
+    return this.record("ilike", args);
+  }
+
   order(...args: unknown[]): this {
     return this.record("order", args);
   }
@@ -65,6 +73,11 @@ class FluentQuery implements PromiseLike<DatabaseResult> {
 
   single(): Promise<DatabaseResult> {
     this.record("single", []);
+    return Promise.resolve(this.result);
+  }
+
+  maybeSingle(): Promise<DatabaseResult> {
+    this.record("maybeSingle", []);
     return Promise.resolve(this.result);
   }
 
@@ -102,6 +115,80 @@ describe("TasksRepository — fonte canônica P2", () => {
 
     expect(callsFor(calls, "from")).toEqual([["tasks"]]);
     expect(callsFor(calls, "eq")).toContainEqual(["user_id", "user-1"]);
+  });
+
+  it("lista para Tool com filtros explícitos, escopo do usuário e limite", async () => {
+    const { client, calls } = mockClient([]);
+    await new TasksRepository(client).listForTool("user-1", {
+      status: "completed",
+      hasReminder: true,
+      query: "50%_off",
+      dueFrom: "2026-08-10T00:00:00.000Z",
+      dueTo: "2026-08-11T23:59:59.000Z",
+      limit: 21,
+    });
+
+    expect(callsFor(calls, "eq")).toEqual([
+      ["user_id", "user-1"],
+      ["completed", true],
+    ]);
+    expect(callsFor(calls, "not")).toContainEqual(["remind_at", "is", null]);
+    expect(callsFor(calls, "ilike")).toEqual([["title", "%50\\%\\_off%"]]);
+    expect(callsFor(calls, "gte")).toEqual([["due_at", "2026-08-10T00:00:00.000Z"]]);
+    expect(callsFor(calls, "lte")).toEqual([["due_at", "2026-08-11T23:59:59.000Z"]]);
+    expect(callsFor(calls, "limit")).toEqual([[21]]);
+  });
+
+  it("resolve mutações por conjunto do backend sem query controlada pelo LLM", async () => {
+    const { client, calls } = mockClient([]);
+    await new TasksRepository(client).listForResolution("user-1", {
+      status: "all",
+      limit: 101,
+    });
+
+    expect(callsFor(calls, "eq")).toEqual([["user_id", "user-1"]]);
+    expect(callsFor(calls, "ilike")).toEqual([]);
+    expect(callsFor(calls, "limit")).toEqual([[101]]);
+  });
+
+  it("inclui leitura compatível de due_date legado mantendo due_at nulo", async () => {
+    const { client, calls } = mockClient([]);
+    await new TasksRepository(client).listLegacyDueDate("user-1", "2026-08-10", {
+      status: "open",
+      hasReminder: null,
+      query: null,
+      limit: 51,
+    });
+
+    expect(callsFor(calls, "eq")).toEqual([
+      ["user_id", "user-1"],
+      ["due_date", "2026-08-10"],
+      ["completed", false],
+    ]);
+    expect(callsFor(calls, "is")).toEqual([["due_at", null]]);
+    expect(callsFor(calls, "limit")).toEqual([[51]]);
+  });
+
+  it("busca e atualiza somente a Task pertencente ao usuário", async () => {
+    const patch: TaskUpdatePatch = {
+      title: "Novo título",
+      due_at: null,
+      reminder_enabled: false,
+    };
+    const { client, calls } = mockClient({ id: "task-1", title: "Novo título" });
+    const repository = new TasksRepository(client);
+
+    await repository.findById("user-1", "task-1");
+    await repository.update("user-1", "task-1", patch);
+
+    expect(callsFor(calls, "eq")).toEqual([
+      ["id", "task-1"],
+      ["user_id", "user-1"],
+      ["id", "task-1"],
+      ["user_id", "user-1"],
+    ]);
+    expect(callsFor(calls, "update")).toEqual([[patch]]);
+    expect(callsFor(calls, "maybeSingle")).toHaveLength(2);
   });
 
   it("cria com todos os campos temporais e de compatibilidade", async () => {
@@ -161,6 +248,13 @@ describe("TasksRepository — fonte canônica P2", () => {
       completed: false,
       completed_at: null,
     });
+  });
+
+  it("retorna null quando update/delete não afetam nenhuma linha", async () => {
+    const { client } = mockClient(null);
+    const repository = new TasksRepository(client);
+    await expect(repository.update("user-1", "ausente", { title: "X" })).resolves.toBeNull();
+    await expect(repository.delete("user-1", "ausente")).resolves.toBeNull();
   });
 
   it("altera e limpa lembrete sem apagar a task", async () => {

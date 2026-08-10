@@ -26,13 +26,11 @@ export class VaultService {
     // duplicidade de *senha* só pode ser detectada no cliente, antes da
     // cifragem. Aqui apenas logamos como sinal, sem bloquear a criação (o
     // contrato de resposta do endpoint não muda).
-    const matches = await this.repo.findByNameOrService(input.name, input.service ?? null);
+    const matches = await this.repo.findByNameOrService(userId, input.name, input.service ?? null);
     if (matches.length > 0) {
       logger.info("Possível entrada duplicada no cofre", {
         route: "vault.service.create",
         userId,
-        name: input.name,
-        service: input.service ?? null,
         existing: matches.length,
       });
     }
@@ -55,7 +53,7 @@ export class VaultService {
   }
 
   /** Metadados apenas (nunca ciphertext) — usado pelo VaultSearchTool do chat. */
-  search(query: string, limit = 8): Promise<VaultMetaEntry[]> {
-    return this.repo.searchMeta(query, limit);
+  search(userId: string, query: string, limit = 8): Promise<VaultMetaEntry[]> {
+    return this.repo.searchMeta(userId, query, limit);
   }
 }

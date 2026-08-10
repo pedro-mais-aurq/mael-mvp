@@ -15,9 +15,12 @@ describe("arquitetura P2 — Task como domínio canônico", () => {
     expect(functions).not.toContain('.from("reminders")');
   });
 
-  it("mantém ReminderTool no Chat, mas injeta o mesmo TaskService", () => {
+  it("mantém ReminderTool apenas como adapter legado, fora do Chat P3", () => {
     const chatServer = source("./chat.server.ts");
-    expect(chatServer).toContain("const reminderTool = new ReminderTool(taskService)");
+    const reminderTool = source("./tools/reminder.tool.ts");
+    expect(reminderTool).toContain("export class ReminderTool");
+    expect(chatServer).not.toContain("ReminderTool");
+    expect(chatServer).toContain("new ToolRegistry(taskTool, vaultSearchTool, taskResolver)");
     expect(chatServer).not.toContain("RemindersRepository");
     expect(chatServer).not.toContain("ReminderService");
   });

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Env / secrets — nunca versionar
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+.output/
+.wrangler/
+.tanstack/
+.vite/
+.vercel/
+*.tsbuildinfo
+
+# Supabase CLI local/link state (contém dados do projeto linkado)
+supabase/.temp/
+supabase/.branches/
+
+# Editor / OS
+.DS_Store
+*.log
+npm-debug.log*
+
+# Claude / agent local state (não faz parte do produto)
+.claude/

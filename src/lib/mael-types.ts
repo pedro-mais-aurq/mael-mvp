@@ -27,6 +27,8 @@ export interface SendChatResult {
   session_id: string;
   user_message: ChatMessageDTO;
   assistant_message: ChatMessageDTO;
+  executed_tools?: string[];
+  mutates_tasks?: boolean;
 }
 
 export interface TaskRow {

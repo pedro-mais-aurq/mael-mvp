@@ -56,28 +56,73 @@ export class VaultRepository {
 
   /**
    * Só metadados (nome/serviço/usuário) — nunca o ciphertext. Usado pelo
-   * ChatService para "search_password" e pelo VaultService para detecção de
+   * Tool `search_vault` e pelo VaultService para detecção de
    * duplicidade por nome/serviço (a senha em si é opaca para o servidor).
    */
-  async searchMeta(query: string, limit = 8): Promise<VaultMetaEntry[]> {
-    const pattern = `%${query.replace(/[%,]/g, " ")}%`;
-    const { data, error } = await this.supabase
-      .from("vault_entries")
-      .select("name, service, username, strength_label")
-      .or(`name.ilike.${pattern},service.ilike.${pattern},username.ilike.${pattern}`)
-      .order("name")
-      .limit(limit);
-    if (error) throw error;
-    return (data ?? []) as VaultMetaEntry[];
+  async searchMeta(userId: string, query: string, limit = 8): Promise<VaultMetaEntry[]> {
+    const normalized = this.normalizeSearchTerm(query);
+    if (!normalized) return [];
+    const safeLimit = Math.min(Math.max(limit, 1), 20);
+    return this.searchFixedColumns(userId, normalized, ["name", "service", "username"], safeLimit);
   }
 
-  async findByNameOrService(name: string, service: string | null): Promise<VaultMetaEntry[]> {
-    const orFilter = service ? `name.ilike.${name},service.ilike.${service}` : `name.ilike.${name}`;
-    const { data, error } = await this.supabase
-      .from("vault_entries")
-      .select("name, service, username, strength_label")
-      .or(orFilter);
-    if (error) throw error;
-    return (data ?? []) as VaultMetaEntry[];
+  async findByNameOrService(
+    userId: string,
+    name: string,
+    service: string | null,
+  ): Promise<VaultMetaEntry[]> {
+    const results: VaultMetaEntry[] = [];
+    const normalizedName = this.normalizeSearchTerm(name);
+    const normalizedService = this.normalizeSearchTerm(service ?? "");
+
+    if (normalizedName) {
+      results.push(...(await this.searchFixedColumns(userId, normalizedName, ["name"], 8)));
+    }
+    if (normalizedService) {
+      results.push(...(await this.searchFixedColumns(userId, normalizedService, ["service"], 8)));
+    }
+    return this.uniqueMeta(results, 8);
+  }
+
+  private async searchFixedColumns(
+    userId: string,
+    value: string,
+    columns: Array<"name" | "service" | "username">,
+    limit: number,
+  ): Promise<VaultMetaEntry[]> {
+    const pattern = `%${value.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+    const batches = await Promise.all(
+      columns.map(async (column) => {
+        const { data, error } = await this.supabase
+          .from("vault_entries")
+          .select("name, service, username, strength_label")
+          .eq("user_id", userId)
+          .ilike(column, pattern)
+          .order("name")
+          .limit(limit);
+        if (error) throw error;
+        return (data ?? []) as VaultMetaEntry[];
+      }),
+    );
+    return this.uniqueMeta(batches.flat(), limit);
+  }
+
+  private uniqueMeta(entries: VaultMetaEntry[], limit: number): VaultMetaEntry[] {
+    const unique = new Map<string, VaultMetaEntry>();
+    for (const entry of entries) {
+      const key = `${entry.name}\u0000${entry.service}\u0000${entry.username}`;
+      if (!unique.has(key)) unique.set(key, entry);
+    }
+    return [...unique.values()]
+      .sort((left, right) => left.name.localeCompare(right.name, "pt-BR"))
+      .slice(0, limit);
+  }
+
+  private normalizeSearchTerm(value: string): string {
+    const withoutControls = Array.from(value, (character) => {
+      const code = character.charCodeAt(0);
+      return code <= 31 || code === 127 ? " " : character;
+    }).join("");
+    return withoutControls.replace(/[(),]/g, " ").trim().slice(0, 120);
   }
 }

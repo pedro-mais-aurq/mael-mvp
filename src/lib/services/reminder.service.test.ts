@@ -25,14 +25,28 @@ function taskFromInput(input: NewTaskInput): TaskRow {
 }
 
 function setup() {
+  const existing = taskFromInput({
+    userId: "user-1",
+    title: "Regar plantas",
+    description: "",
+    category: "geral",
+    priority: "media",
+    due_date: null,
+    due_time: null,
+    due_at: null,
+    remind_at: "2026-08-10T18:00:00.000Z",
+    notified_at: null,
+    reminder_enabled: true,
+    legacy_reminder_id: null,
+  });
   const repo = {
     listByUser: vi.fn(async () => []),
     create: vi.fn(async (input: NewTaskInput) => taskFromInput(input)),
-    setCompleted: vi.fn(async () => {}),
-    delete: vi.fn(async () => {}),
+    setCompleted: vi.fn(async () => existing),
+    delete: vi.fn(async () => existing),
     listRemindersByUser: vi.fn(async () => []),
-    setReminderEnabled: vi.fn(async () => {}),
-    clearReminder: vi.fn(async () => {}),
+    setReminderEnabled: vi.fn(async () => existing),
+    clearReminder: vi.fn(async () => existing),
     listDueUnnotified: vi.fn(async () => []),
     markNotified: vi.fn(async () => {}),
   } as unknown as TasksRepository;
