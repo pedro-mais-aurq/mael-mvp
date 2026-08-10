@@ -319,4 +319,44 @@ describe("P3 Hardening 4 — matriz adversarial obrigatória", () => {
     expect(denied.modelOutput).toMatchObject({ error: { code: "task_value_scope_mismatch" } });
     expect(harness.taskTool.update).not.toHaveBeenCalled();
   });
+
+  it("P4 temporal: interpreta 9 da noite e limpa o título", () => {
+    const harness = setup("Me lembre de tomar remédio amanhã às 9 da noite.");
+    expect(harness.context.policy.createTaskScope?.requestedTitles).toEqual(["tomar remedio"]);
+    expect(harness.context.policy.temporalScope.remindAt).toEqual({
+      kind: "instant",
+      iso: "2026-08-11T00:00:00.000Z",
+    });
+  });
+
+  it("P4 temporal: interpreta 2 da tarde como 14:00 local", () => {
+    const harness = setup("Crie uma tarefa Reunião amanhã às 2 da tarde.");
+    expect(harness.context.policy.createTaskScope?.requestedTitles).toEqual(["reuniao"]);
+    expect(harness.context.policy.temporalScope.dueAt).toEqual({
+      kind: "instant",
+      iso: "2026-08-10T17:00:00.000Z",
+    });
+  });
+
+  it("P4 temporal: interpreta depois de amanhã antes da regra genérica", () => {
+    const harness = setup("Crie uma tarefa X depois de amanhã às 9.");
+    expect(harness.context.policy.createTaskScope?.requestedTitles).toEqual(["x"]);
+    expect(harness.context.policy.temporalScope.dueAt).toEqual({
+      kind: "instant",
+      iso: "2026-08-11T12:00:00.000Z",
+    });
+  });
+
+  it("P4 temporal: bloqueia novo lembrete no passado", async () => {
+    const harness = setup("Me lembre de tomar remédio hoje às 9.");
+    const denied = await harness.registry.execute(
+      harness.context,
+      call("create_task", {
+        title: "Tomar remédio",
+        remind_at: "2026-08-09T12:00:00.000Z",
+      }),
+    );
+    expect(denied.modelOutput).toMatchObject({ error: { code: "create_temporal_past" } });
+    expect(harness.taskTool.create).not.toHaveBeenCalled();
+  });
 });

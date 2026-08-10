@@ -8,6 +8,90 @@ export type Database = {
   };
   public: {
     Tables: {
+      github_connection_states: {
+        Row: {
+          consumed_at: string | null;
+          created_at: string;
+          expires_at: string;
+          id: string;
+          installation_id: number | null;
+          pkce_verifier: string | null;
+          purpose: string;
+          state_hash: string;
+          user_id: string;
+        };
+        Insert: {
+          consumed_at?: string | null;
+          created_at?: string;
+          expires_at: string;
+          id?: string;
+          installation_id?: number | null;
+          pkce_verifier?: string | null;
+          purpose: string;
+          state_hash: string;
+          user_id: string;
+        };
+        Update: {
+          consumed_at?: string | null;
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          installation_id?: number | null;
+          pkce_verifier?: string | null;
+          purpose?: string;
+          state_hash?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      github_connections: {
+        Row: {
+          connected_at: string;
+          created_at: string;
+          github_account_id: number;
+          github_account_login: string;
+          github_account_type: string;
+          id: string;
+          installation_id: number;
+          last_verified_at: string | null;
+          permissions: Json;
+          repository_selection: string | null;
+          status: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          connected_at?: string;
+          created_at?: string;
+          github_account_id: number;
+          github_account_login: string;
+          github_account_type: string;
+          id?: string;
+          installation_id: number;
+          last_verified_at?: string | null;
+          permissions?: Json;
+          repository_selection?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          connected_at?: string;
+          created_at?: string;
+          github_account_id?: number;
+          github_account_login?: string;
+          github_account_type?: string;
+          id?: string;
+          installation_id?: number;
+          last_verified_at?: string | null;
+          permissions?: Json;
+          repository_selection?: string | null;
+          status?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       chat_messages: {
         Row: {
           content: string;

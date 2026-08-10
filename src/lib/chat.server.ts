@@ -14,13 +14,32 @@ import { TaskService } from "./services/task.service";
 import { VaultService } from "./services/vault.service";
 import { TaskTool } from "./tools/task.tool";
 import { VaultSearchTool } from "./tools/vault-search.tool";
+import { GitHubTool } from "./tools/github.tool";
 
 function buildChatService(supabase: SupabaseClient): ChatService {
   const taskService = new TaskService(new TasksRepository(supabase));
   const taskTool = new TaskTool(taskService);
   const taskResolver = new TaskResolver(taskService);
   const vaultSearchTool = new VaultSearchTool(new VaultService(new VaultRepository(supabase)));
-  const registry = new ToolRegistry(taskTool, vaultSearchTool, taskResolver);
+  const githubTool = new GitHubTool({
+    async listRepositories(userId, input) {
+      const { buildGitHubServices } = await import("./github/composition.server");
+      return buildGitHubServices(supabase).githubService.listRepositories(userId, input);
+    },
+    async getRepository(userId, owner, repo) {
+      const { buildGitHubServices } = await import("./github/composition.server");
+      return buildGitHubServices(supabase).githubService.getRepository(userId, owner, repo);
+    },
+    async listPullRequests(userId, input) {
+      const { buildGitHubServices } = await import("./github/composition.server");
+      return buildGitHubServices(supabase).githubService.listPullRequests(userId, input);
+    },
+    async listIssues(userId, input) {
+      const { buildGitHubServices } = await import("./github/composition.server");
+      return buildGitHubServices(supabase).githubService.listIssues(userId, input);
+    },
+  });
+  const registry = new ToolRegistry(taskTool, vaultSearchTool, taskResolver, githubTool);
   const orchestrator = new ChatOrchestrator(createDefaultLLMProvider(), registry);
   return new ChatService(new ChatRepository(supabase), orchestrator);
 }

@@ -1,9 +1,16 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ListChecks, KeyRound, MessageCircle, LogOut } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ListChecks, KeyRound, MessageCircle, LogOut, Plug } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import {
+  cachedAuthenticatedUserId,
+  isolateAuthenticatedQueryCache,
+  shouldClearAuthenticatedCache,
+  signOutWithClearedCache,
+} from "@/lib/auth/session-cache";
 import { getProfile } from "@/lib/profile.functions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,42 +21,105 @@ const NAV = [
   { to: "/", label: "Conversa", icon: MessageCircle },
   { to: "/tarefas", label: "Tarefas", icon: ListChecks },
   { to: "/cofre", label: "Cofre", icon: KeyRound },
+  { to: "/integracoes", label: "Integrações", icon: Plug },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [ready, setReady] = useState(false);
+  const queryClient = useQueryClient();
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
+  const transitionVersion = useRef(0);
 
   useEffect(() => {
     let mounted = true;
+    const applySession = async (nextUserId: string | null) => {
+      if (!mounted) return;
+      const version = ++transitionVersion.current;
+      const previousUserId = cachedAuthenticatedUserId(queryClient);
+      const mustClear = shouldClearAuthenticatedCache(previousUserId, nextUserId);
+      if (mustClear || !nextUserId) {
+        setAuthLoading(true);
+        setSessionUserId(null);
+      }
+      await isolateAuthenticatedQueryCache(queryClient, nextUserId);
+      if (!mounted || version !== transitionVersion.current) return;
+      if (!nextUserId) {
+        void navigate({ to: "/auth" });
+        return;
+      }
+      setSessionUserId(nextUserId);
+      setAuthLoading(false);
+    };
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) navigate({ to: "/auth" });
+      void applySession(session?.user.id ?? null);
     });
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      if (!data.session) {
-        navigate({ to: "/auth" });
-      } else {
-        setReady(true);
-      }
-    });
+
+    void supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!mounted) return;
+        if (error) {
+          console.error("[Auth] Falha ao restaurar sessão no AppShell", {
+            code: error.code ?? "session_restore_failed",
+          });
+          void applySession(null);
+          return;
+        }
+        void applySession(data.session?.user.id ?? null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        console.error("[Auth] Falha inesperada ao restaurar sessão no AppShell");
+        void applySession(null);
+      });
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
   const { data: profile } = useQuery({
-    queryKey: ["profile"],
+    queryKey: ["profile", sessionUserId],
     queryFn: () => getProfile(),
-    enabled: ready,
+    enabled: Boolean(sessionUserId) && !authLoading,
     retry: false,
   });
 
-  if (!ready) {
+  async function handleLogout() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setAuthLoading(true);
+    setSessionUserId(null);
+    const { error } = await signOutWithClearedCache(queryClient, () => supabase.auth.signOut());
+    if (!error) {
+      void navigate({ to: "/auth" });
+      return;
+    }
+
+    console.error("[Auth] Falha ao encerrar sessão", {
+      code: error.code ?? "sign_out_failed",
+    });
+    toast.error("Não foi possível sair agora.");
+    const { data } = await supabase.auth.getSession();
+    const restoredUserId = data.session?.user.id ?? null;
+    await isolateAuthenticatedQueryCache(queryClient, restoredUserId);
+    if (restoredUserId) {
+      setSessionUserId(restoredUserId);
+      setAuthLoading(false);
+      setSigningOut(false);
+    } else {
+      void navigate({ to: "/auth" });
+    }
+  }
+
+  if (authLoading || !sessionUserId) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
         <img src={foolLogo} alt="Mael" className="h-16 w-16 animate-pulse" />
@@ -105,10 +175,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               variant="ghost"
               size="icon"
               title="Sair"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                navigate({ to: "/auth" });
-              }}
+              disabled={signingOut}
+              onClick={() => void handleLogout()}
             >
               <LogOut className="h-4 w-4" />
             </Button>

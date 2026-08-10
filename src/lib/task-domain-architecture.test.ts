@@ -20,7 +20,9 @@ describe("arquitetura P2 — Task como domínio canônico", () => {
     const reminderTool = source("./tools/reminder.tool.ts");
     expect(reminderTool).toContain("export class ReminderTool");
     expect(chatServer).not.toContain("ReminderTool");
-    expect(chatServer).toContain("new ToolRegistry(taskTool, vaultSearchTool, taskResolver)");
+    expect(chatServer).toContain(
+      "new ToolRegistry(taskTool, vaultSearchTool, taskResolver, githubTool)",
+    );
     expect(chatServer).not.toContain("RemindersRepository");
     expect(chatServer).not.toContain("ReminderService");
   });

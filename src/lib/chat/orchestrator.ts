@@ -109,6 +109,7 @@ function fallbackFrom(records: ExecutionRecord[], fallback: string): string {
 function sourceForTool(tool: string): DataSource | null {
   if (tool === "list_tasks") return "tasks";
   if (tool === "search_vault") return "vault";
+  if (tool.startsWith("github_")) return "github";
   return null;
 }
 
@@ -128,6 +129,7 @@ function missingRequiredSources(
 function requiredSourceFallback(
   policy: ToolAuthorizationPolicy,
   missing: DataSource[],
+  records: ExecutionRecord[],
 ): string | null {
   if (missing.length === 0) return null;
   if (missing.includes("vault") && policy.vaultTargetMissing) {
@@ -138,6 +140,38 @@ function requiredSourceFallback(
   }
   if (missing.includes("tasks")) {
     return "Não consegui consultar suas tarefas agora. Tente novamente.";
+  }
+  if (missing.includes("github")) {
+    const repositoryAmbiguous = records.some((record) => {
+      if (!record.tool.startsWith("github_") || record.result.ok) return false;
+      const output = record.result.modelOutput;
+      if (!output || typeof output !== "object" || Array.isArray(output)) return false;
+      const error = output["error"];
+      return (
+        error !== null &&
+        typeof error === "object" &&
+        !Array.isArray(error) &&
+        error["code"] === "github_repository_ambiguous"
+      );
+    });
+    if (repositoryAmbiguous) {
+      return "Informe o repositório GitHub no formato owner/repo.";
+    }
+    const notConnected = records.some((record) => {
+      if (!record.tool.startsWith("github_") || record.result.ok) return false;
+      const output = record.result.modelOutput;
+      if (!output || typeof output !== "object" || Array.isArray(output)) return false;
+      const error = output["error"];
+      return (
+        error !== null &&
+        typeof error === "object" &&
+        !Array.isArray(error) &&
+        error["code"] === "github_not_connected"
+      );
+    });
+    return notConnected
+      ? "Seu GitHub ainda não está conectado ao Mael. Acesse Integrações → GitHub."
+      : "Não consegui consultar seu GitHub agora. Tente novamente.";
   }
   return "Não consegui consultar o Cofre agora. Tente novamente.";
 }
@@ -300,7 +334,11 @@ export class ChatOrchestrator {
     records: ExecutionRecord[],
     candidateReply: string,
   ): ChatOrchestratorResult {
-    const sourceFallback = requiredSourceFallback(policy, missingRequiredSources(policy, records));
+    const sourceFallback = requiredSourceFallback(
+      policy,
+      missingRequiredSources(policy, records),
+      records,
+    );
     const mutationFallback = mutationOutcomeFallback(records);
     return this.result(records, sourceFallback ?? mutationFallback ?? candidateReply);
   }

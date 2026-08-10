@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AppError, NotFoundError } from "../core/exceptions";
 import { logger } from "../core/logger";
 import type { LLMToolCall, LLMToolDefinition } from "../providers/llm.provider";
+import type { GitHubTool } from "../tools/github.tool";
 import type { TaskTool } from "../tools/task.tool";
 import type { VaultSearchTool } from "../tools/vault-search.tool";
 import type { TaskResolver } from "./task-resolver";
@@ -70,11 +71,38 @@ const updateTaskSchema = z
 const setCompletedSchema = z.object({ task_id: taskId, completed: z.boolean() }).strict();
 const deleteTaskSchema = z.object({ task_id: taskId }).strict();
 const searchVaultSchema = z.object({ query: z.string().trim().min(1).max(120) }).strict();
+const githubAccount = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/);
+const githubRepository = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9._-]{1,100}$/);
+const githubListRepositoriesSchema = z
+  .object({
+    account: githubAccount.optional(),
+    query: z.string().trim().min(1).max(100).optional(),
+    limit: z.number().int().min(1).max(30).default(20),
+  })
+  .strict();
+const githubRepositorySchema = z.object({ owner: githubAccount, repo: githubRepository }).strict();
+const githubRepositoryListSchema = z
+  .object({
+    owner: githubAccount,
+    repo: githubRepository,
+    state: z.enum(["open", "closed", "all"]).default("open"),
+    limit: z.number().int().min(1).max(30).default(20),
+  })
+  .strict();
 type CreateTaskArguments = z.output<typeof createTaskSchema>;
 type ListTasksArguments = z.output<typeof listTasksSchema>;
 type UpdateTaskArguments = z.output<typeof updateTaskSchema>;
 type SetCompletedArguments = z.output<typeof setCompletedSchema>;
 type SearchVaultArguments = z.output<typeof searchVaultSchema>;
+type GitHubListRepositoriesArguments = z.output<typeof githubListRepositoriesSchema>;
+type GitHubRepositoryArguments = z.output<typeof githubRepositorySchema>;
+type GitHubRepositoryListArguments = z.output<typeof githubRepositoryListSchema>;
 
 const objectSchema = (
   properties: Record<string, unknown>,
@@ -382,6 +410,7 @@ function validateTemporalField(
   field: "due_at" | "remind_at",
   binding: TemporalValueBinding,
   operation: "create" | "update",
+  now: Date,
 ): ToolExecutionResult | null {
   if (binding.kind === "none") return null;
   if (binding.kind === "date_only") {
@@ -407,6 +436,12 @@ function validateTemporalField(
       `O valor de ${field} não corresponde à data e hora solicitadas.`,
     );
   }
+  if (field === "remind_at" && Date.parse(binding.iso) <= now.getTime()) {
+    return invalidResult(
+      `${operation}_temporal_past`,
+      "O lembrete solicitado já está no passado. Informe um novo horário.",
+    );
+  }
   return null;
 }
 
@@ -416,8 +451,20 @@ function validateTemporalScope(
   operation: "create" | "update",
 ): ToolExecutionResult | null {
   return (
-    validateTemporalField(args, "due_at", context.policy.temporalScope.dueAt, operation) ??
-    validateTemporalField(args, "remind_at", context.policy.temporalScope.remindAt, operation)
+    validateTemporalField(
+      args,
+      "due_at",
+      context.policy.temporalScope.dueAt,
+      operation,
+      context.now,
+    ) ??
+    validateTemporalField(
+      args,
+      "remind_at",
+      context.policy.temporalScope.remindAt,
+      operation,
+      context.now,
+    )
   );
 }
 
@@ -627,10 +674,75 @@ function validateVaultQueryScope(
       );
 }
 
+function validateGitHubRepositoryListScope(
+  context: ToolExecutionContext,
+  args: GitHubListRepositoriesArguments,
+): ToolExecutionResult | null {
+  const scope = context.policy.githubScope;
+  if (!scope) {
+    return invalidResult("github_scope_required", "A mensagem não autorizou consulta ao GitHub.");
+  }
+  if (scope.account) {
+    if (!args.account || args.account.toLowerCase() !== scope.account.toLowerCase()) {
+      return invalidResult(
+        "github_account_scope_mismatch",
+        "A conta GitHub consultada não corresponde ao pedido.",
+      );
+    }
+  } else if (args.account) {
+    return invalidResult(
+      "github_account_scope_mismatch",
+      "A consulta geral não autorizou restringir para outra conta.",
+    );
+  }
+  if (args.query) {
+    return invalidResult(
+      "github_query_scope_mismatch",
+      "A consulta geral não autorizou esse filtro de repositório.",
+    );
+  }
+  return null;
+}
+
+function validateGitHubRepositoryScope(
+  context: ToolExecutionContext,
+  args: GitHubRepositoryArguments | GitHubRepositoryListArguments,
+  expectedState?: "open" | "closed" | "all",
+): ToolExecutionResult | null {
+  const scope = context.policy.githubScope;
+  if (!scope?.owner || !scope.repo) {
+    return invalidResult(
+      "github_repository_ambiguous",
+      "Informe o repositório no formato owner/repo.",
+    );
+  }
+  if (
+    args.owner.toLowerCase() !== scope.owner.toLowerCase() ||
+    args.repo.toLowerCase() !== scope.repo.toLowerCase()
+  ) {
+    return invalidResult(
+      "github_repository_scope_mismatch",
+      "O repositório consultado não corresponde ao pedido original.",
+    );
+  }
+  if ("state" in args && expectedState && args.state !== expectedState) {
+    return invalidResult(
+      "github_state_scope_mismatch",
+      "O estado consultado não corresponde ao pedido original.",
+    );
+  }
+  return null;
+}
+
 export class ToolRegistry {
   private readonly tools: Map<string, RegisteredTool>;
 
-  constructor(taskTool: TaskTool, vaultSearchTool: VaultSearchTool, taskResolver: TaskResolver) {
+  constructor(
+    taskTool: TaskTool,
+    vaultSearchTool: VaultSearchTool,
+    taskResolver: TaskResolver,
+    githubTool?: GitHubTool,
+  ) {
     const registered: RegisteredTool[] = [
       defineTool({
         name: "create_task",
@@ -773,6 +885,100 @@ export class ToolRegistry {
         },
       }),
     ];
+    if (githubTool) {
+      registered.push(
+        defineTool({
+          name: "github_list_repositories",
+          kind: "read",
+          description:
+            "Lista somente metadados dos repositórios autorizados nas instalações GitHub conectadas.",
+          parameters: objectSchema({
+            account: { type: "string", minLength: 1, maxLength: 39 },
+            query: { type: "string", minLength: 1, maxLength: 100 },
+            limit: { type: "integer", minimum: 1, maximum: 30, default: 20 },
+          }),
+          schema: githubListRepositoriesSchema,
+          execute(context, args) {
+            const scopeError = validateGitHubRepositoryListScope(context, args);
+            return scopeError
+              ? Promise.resolve(scopeError)
+              : githubTool.listRepositories(context.userId, args);
+          },
+        }),
+        defineTool({
+          name: "github_get_repository",
+          kind: "read",
+          description:
+            "Obtém metadados read-only de um repositório owner/repo autorizado pela instalação.",
+          parameters: objectSchema(
+            {
+              owner: { type: "string", minLength: 1, maxLength: 39 },
+              repo: { type: "string", minLength: 1, maxLength: 100 },
+            },
+            ["owner", "repo"],
+          ),
+          schema: githubRepositorySchema,
+          execute(context, args) {
+            const scopeError = validateGitHubRepositoryScope(context, args);
+            return scopeError
+              ? Promise.resolve(scopeError)
+              : githubTool.getRepository(context.userId, args);
+          },
+        }),
+        defineTool({
+          name: "github_list_pull_requests",
+          kind: "read",
+          description:
+            "Lista títulos e metadados de pull requests de um owner/repo autorizado, sem body.",
+          parameters: objectSchema(
+            {
+              owner: { type: "string", minLength: 1, maxLength: 39 },
+              repo: { type: "string", minLength: 1, maxLength: 100 },
+              state: { type: "string", enum: ["open", "closed", "all"], default: "open" },
+              limit: { type: "integer", minimum: 1, maximum: 30, default: 20 },
+            },
+            ["owner", "repo"],
+          ),
+          schema: githubRepositoryListSchema,
+          execute(context, args) {
+            const scopeError = validateGitHubRepositoryScope(
+              context,
+              args,
+              context.policy.githubScope?.state,
+            );
+            return scopeError
+              ? Promise.resolve(scopeError)
+              : githubTool.listPullRequests(context.userId, args);
+          },
+        }),
+        defineTool({
+          name: "github_list_issues",
+          kind: "read",
+          description:
+            "Lista títulos, labels limitadas e metadados de issues reais, excluindo pull requests.",
+          parameters: objectSchema(
+            {
+              owner: { type: "string", minLength: 1, maxLength: 39 },
+              repo: { type: "string", minLength: 1, maxLength: 100 },
+              state: { type: "string", enum: ["open", "closed", "all"], default: "open" },
+              limit: { type: "integer", minimum: 1, maximum: 30, default: 20 },
+            },
+            ["owner", "repo"],
+          ),
+          schema: githubRepositoryListSchema,
+          execute(context, args) {
+            const scopeError = validateGitHubRepositoryScope(
+              context,
+              args,
+              context.policy.githubScope?.state,
+            );
+            return scopeError
+              ? Promise.resolve(scopeError)
+              : githubTool.listIssues(context.userId, args);
+          },
+        }),
+      );
+    }
     this.tools = new Map(registered.map((tool) => [tool.name, tool]));
   }
 

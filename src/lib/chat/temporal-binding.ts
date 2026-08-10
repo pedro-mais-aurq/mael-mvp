@@ -103,9 +103,10 @@ function localDate(
   day: number;
 } | null {
   const now = localParts(context.now, context.timezone);
-  if (/\b(?:hoje|amanha)\b/.test(message)) {
+  if (/\b(?:hoje|amanha|depois de amanha)\b/.test(message)) {
     const date = new Date(Date.UTC(now.year, now.month - 1, now.day));
-    if (/\bamanha\b/.test(message)) date.setUTCDate(date.getUTCDate() + 1);
+    const offset = /\bdepois de amanha\b/.test(message) ? 2 : /\bamanha\b/.test(message) ? 1 : 0;
+    date.setUTCDate(date.getUTCDate() + offset);
     return {
       year: date.getUTCFullYear(),
       month: date.getUTCMonth() + 1,
@@ -135,6 +136,20 @@ function localDate(
 }
 
 function localTime(message: string): { hour: number; minute: number } | null {
+  const period = message.match(/\b(\d{1,2})(?::(\d{2}))?\s+da\s+(manha|tarde|noite)\b/);
+  if (period) {
+    let hour = Number(period[1]);
+    const minute = Number(period[2] ?? 0);
+    const dayPeriod = period[3];
+    if (hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
+    if (dayPeriod === "manha") {
+      if (hour === 12) hour = 0;
+    } else if (hour < 12) {
+      hour += 12;
+    }
+    return { hour, minute };
+  }
+
   const afterAt = message.match(/\bas\s+(\d{1,2})(?::(\d{2}))?(?:\s*h(?:oras?)?)?\b/);
   const compact = message.match(/\b(\d{1,2})h(?:(\d{2}))?\b/);
   const match = afterAt ?? compact;
@@ -147,10 +162,12 @@ function localTime(message: string): { hour: number; minute: number } | null {
 function hasTemporalSignal(message: string): boolean {
   return (
     /\b(?:hoje|amanha)\b/.test(message) ||
+    /\bdepois de amanha\b/.test(message) ||
     /\b\d{4}-\d{2}-\d{2}\b/.test(message) ||
     /\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{4})?\b/.test(message) ||
     /\bas\s+\d{1,2}(?::\d{2})?\b/.test(message) ||
-    /\b\d{1,2}h(?:\d{2})?\b/.test(message)
+    /\b\d{1,2}h(?:\d{2})?\b/.test(message) ||
+    /\b\d{1,2}(?::\d{2})?\s+da\s+(?:manha|tarde|noite)\b/.test(message)
   );
 }
 

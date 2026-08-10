@@ -13,10 +13,14 @@ export const TOOL_NAMES = [
   "set_task_completed",
   "delete_task",
   "search_vault",
+  "github_list_repositories",
+  "github_get_repository",
+  "github_list_pull_requests",
+  "github_list_issues",
 ] as const;
 
 export type ToolName = (typeof TOOL_NAMES)[number];
-export type DataSource = "tasks" | "vault";
+export type DataSource = "tasks" | "vault" | "github";
 export type TaskDateScope = "today" | "tomorrow";
 export type TaskResolutionStatus = "open" | "completed" | "all";
 export type TaskMutationField =
@@ -50,6 +54,14 @@ export interface TaskReadScope {
   expectedHasReminder: boolean | null;
 }
 
+export interface GitHubReadScope {
+  generalRepositories: boolean;
+  account: string | null;
+  owner: string | null;
+  repo: string | null;
+  state: "open" | "closed" | "all";
+}
+
 export interface ToolAuthorizationPolicy {
   allowedTools: ReadonlySet<ToolName>;
   requiredDataSources: ReadonlySet<DataSource>;
@@ -65,6 +77,7 @@ export interface ToolAuthorizationPolicy {
   taskReadScope: TaskReadScope | null;
   vaultQueryTerms: ReadonlyArray<string>;
   vaultTargetMissing: boolean;
+  githubScope: GitHubReadScope | null;
 }
 
 const WRITE_TOOLS = new Set<ToolName>([
@@ -105,6 +118,15 @@ const VAULT_DOMAIN =
   /\b(?:cofre|senha|senhas|credencial|credenciais|login|logins|acesso salvo|acessos salvos)\b/;
 const VAULT_PERSONAL_QUERY =
   /\b(?:qual|quais|minha|minhas|meu|meus|tenho|diga|dizer|salva|salvas|salvo|salvos|procure|procurar|busque|buscar|mostre|mostrar|encontre|encontrar|consulte|consultar)\b/;
+
+const GITHUB_REPOSITORY_DOMAIN = /\b(?:repositorio|repositorios|repo|repos)\b/;
+const GITHUB_SPECIFIC_REPOSITORY_DOMAIN = /\b(?:repositorio|repo)\b/;
+const GITHUB_PROJECT_DOMAIN =
+  /\b(?:projeto|projetos)\b[^.?!]{0,30}\bgithub\b|\bgithub\b[^.?!]{0,30}\b(?:projeto|projetos)\b/;
+const GITHUB_PULL_REQUEST_DOMAIN = /\b(?:pull request|pull requests|pr|prs)\b/;
+const GITHUB_ISSUE_DOMAIN = /\b(?:issue|issues)\b/;
+const GITHUB_READ_ACTION =
+  /\b(?:qual|quais|liste|listar|mostre|mostrar|detalhes|informacoes|aberta|abertas|aberto|abertos|fechada|fechadas|fechado|fechados|existem|tenho|meus|minhas)\b/;
 
 const COUNT_WORDS: Readonly<Record<string, number>> = {
   um: 1,
@@ -267,11 +289,11 @@ function stripCourtesy(value: string): string {
 function stripTemporalTail(value: string): string {
   return value
     .replace(
-      /\s+(?:(?:para|em)\s+)?(?:hoje|amanha)(?:\s+(?:as\s+)?\d{1,2}(?::\d{2})?(?:\s*h(?:oras?)?)?)?\s*$/,
+      /\s+(?:(?:para|em)\s+)?(?:hoje|amanha|depois\s+de\s+amanha)(?:\s+(?:as\s+)?\d{1,2}(?::\d{2})?(?:\s*h(?:\d{2})?(?:oras?)?|\s+da\s+(?:manha|tarde|noite))?)?\s*$/,
       "",
     )
     .replace(
-      /\s+(?:(?:para|em)\s+)?(?:\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{4})?)(?:\s+(?:as\s+)?\d{1,2}(?::\d{2})?(?:\s*h(?:oras?)?)?)?\s*$/,
+      /\s+(?:(?:para|em)\s+)?(?:\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}(?:[/-]\d{4})?)(?:\s+(?:as\s+)?\d{1,2}(?::\d{2})?(?:\s*h(?:\d{2})?(?:oras?)?|\s+da\s+(?:manha|tarde|noite))?)?\s*$/,
       "",
     )
     .trim();
@@ -472,6 +494,26 @@ function taskReadStatus(message: string): TaskResolutionStatus {
   return "open";
 }
 
+function githubRepositoryTarget(originalMessage: string): { owner: string; repo: string } | null {
+  const match = normalizeScopeText(originalMessage).match(
+    /\b([a-z0-9](?:[a-z0-9-]{0,38}))\/([a-z0-9._-]{1,100})\b/,
+  );
+  return match?.[1] && match[2] ? { owner: match[1], repo: match[2] } : null;
+}
+
+function githubAccountTarget(message: string): string | null {
+  const match = message.match(
+    /\b(?:(?:organizacao|org|conta)\s+|(?:repositorios|repos)\s+(?:da|do|de)\s+)([a-z0-9](?:[a-z0-9-]{0,38}))\b/,
+  );
+  return match?.[1] ?? null;
+}
+
+function githubRequestedState(message: string): "open" | "closed" | "all" {
+  if (/\b(?:fechada|fechadas|fechado|fechados)\b/.test(message)) return "closed";
+  if (/\b(?:todas|todos)\b/.test(message)) return "all";
+  return "open";
+}
+
 export function isWriteTool(name: string): name is ToolName {
   return WRITE_TOOLS.has(name as ToolName);
 }
@@ -548,6 +590,43 @@ export function resolveTurnPolicy(
     requiredDataSources.add("vault");
   }
 
+  const githubTarget = githubRepositoryTarget(originalMessage);
+  const githubResource =
+    GITHUB_REPOSITORY_DOMAIN.test(message) ||
+    GITHUB_PROJECT_DOMAIN.test(message) ||
+    GITHUB_PULL_REQUEST_DOMAIN.test(message) ||
+    GITHUB_ISSUE_DOMAIN.test(message) ||
+    githubTarget !== null;
+  const githubReadRequired =
+    !explanatory &&
+    !createAllowed &&
+    !taskMutationRequested &&
+    !vaultReadRequired &&
+    githubResource &&
+    (GITHUB_READ_ACTION.test(message) || githubTarget !== null);
+  let githubScope: GitHubReadScope | null = null;
+  if (githubReadRequired) {
+    const account = githubAccountTarget(message);
+    const state = githubRequestedState(message);
+    if (GITHUB_PULL_REQUEST_DOMAIN.test(message)) {
+      allowedTools.add("github_list_pull_requests");
+    } else if (GITHUB_ISSUE_DOMAIN.test(message)) {
+      allowedTools.add("github_list_issues");
+    } else if (githubTarget || GITHUB_SPECIFIC_REPOSITORY_DOMAIN.test(message)) {
+      allowedTools.add("github_get_repository");
+    } else {
+      allowedTools.add("github_list_repositories");
+    }
+    requiredDataSources.add("github");
+    githubScope = {
+      generalRepositories: !githubTarget && !account,
+      account,
+      owner: githubTarget?.owner ?? null,
+      repo: githubTarget?.repo ?? null,
+      state,
+    };
+  }
+
   const targetTerms = taskMutationRequested ? taskTargetTerms(originalMessage) : [];
   const hasWrite = [...allowedTools].some(isWriteTool);
   const inferredTargetCount = taskMutationRequested ? Math.min(targetTerms.length, 5) : 0;
@@ -619,5 +698,6 @@ export function resolveTurnPolicy(
       : null,
     vaultQueryTerms: vaultTerms,
     vaultTargetMissing: vaultReadRequired && vaultTerms.length === 0,
+    githubScope,
   };
 }

@@ -24,4 +24,13 @@ describe("prompt e timezone da P3", () => {
     expect(resolveTimezone("inválido", "America/Sao_Paulo")).toBe("America/Sao_Paulo");
     expect(resolveTimezone("inválido", "também inválido")).toBe("UTC");
   });
+
+  it("instrui o modelo a não tratar lista GitHub truncada como total", () => {
+    const prompt = buildChatSystemPrompt({
+      timezone: "UTC",
+      now: new Date("2026-08-10T12:00:00.000Z"),
+    });
+    expect(prompt).toContain("truncated=true");
+    expect(prompt).toContain("count é apenas a quantidade devolvida, nunca o total real");
+  });
 });

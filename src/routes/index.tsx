@@ -60,6 +60,12 @@ type ToolOutput =
     }
   | { kind: "task_list"; count?: number; truncated?: boolean }
   | { kind: "vault_matches"; match_count?: number }
+  | {
+      kind:
+        "github_repository_list" | "github_repository" | "github_pull_requests" | "github_issues";
+      count?: number;
+      truncated?: boolean;
+    }
   | { kind: "tool_results"; results?: { tool?: string; output?: ToolOutput }[] };
 
 function ToolOutputCard({ output }: { output: ToolOutput }) {
@@ -103,6 +109,31 @@ function ToolOutputCard({ output }: { output: ToolOutput }) {
         </span>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {count} resultado{count === 1 ? "" : "s"} encontrado{count === 1 ? "" : "s"}
+        </p>
+      </div>
+    );
+  }
+  if (
+    output.kind === "github_repository_list" ||
+    output.kind === "github_repository" ||
+    output.kind === "github_pull_requests" ||
+    output.kind === "github_issues"
+  ) {
+    const count = Math.max(0, Math.trunc(output.count ?? 0));
+    const label =
+      output.kind === "github_pull_requests"
+        ? "Pull requests"
+        : output.kind === "github_issues"
+          ? "Issues"
+          : "GitHub consultado";
+    return (
+      <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+        <span className="font-display text-[0.65rem] tracking-[0.25em] text-primary uppercase">
+          {label}
+        </span>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {count} resultado{count === 1 ? "" : "s"}
+          {output.truncated ? " · lista limitada" : ""}
         </p>
       </div>
     );

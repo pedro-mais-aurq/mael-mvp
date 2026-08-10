@@ -57,7 +57,9 @@ describe("arquitetura P3 — Tool Calling canônico", () => {
     const repository = source("../repositories/tasks.repository.ts");
     const registry = source("./tool-registry.ts");
     expect(chatServer).toContain("new TaskResolver(taskService)");
-    expect(chatServer).toContain("new ToolRegistry(taskTool, vaultSearchTool, taskResolver)");
+    expect(chatServer).toContain(
+      "new ToolRegistry(taskTool, vaultSearchTool, taskResolver, githubTool)",
+    );
     expect(resolver).toContain("listForMutationResolution(userId, status)");
     expect(repository).toContain("listForResolution");
     expect(registry).not.toContain("registerTaskCandidates");

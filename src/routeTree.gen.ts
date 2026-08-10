@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CofreRouteImport } from './routes/cofre'
+import { Route as IntegracoesRouteImport } from './routes/integracoes'
 import { Route as LembretesRouteImport } from './routes/lembretes'
 import { Route as TarefasRouteImport } from './routes/tarefas'
+import { Route as IntegracoesGithubCallbackRouteImport } from './routes/integracoes_.github.callback'
+import { Route as IntegracoesGithubSetupRouteImport } from './routes/integracoes_.github.setup'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +33,11 @@ const CofreRoute = CofreRouteImport.update({
   path: '/cofre',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntegracoesRoute = IntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LembretesRoute = LembretesRouteImport.update({
   id: '/lembretes',
   path: '/lembretes',
@@ -40,43 +48,91 @@ const TarefasRoute = TarefasRouteImport.update({
   path: '/tarefas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntegracoesGithubCallbackRoute =
+  IntegracoesGithubCallbackRouteImport.update({
+    id: '/integracoes_/github/callback',
+    path: '/integracoes/github/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const IntegracoesGithubSetupRoute = IntegracoesGithubSetupRouteImport.update({
+  id: '/integracoes_/github/setup',
+  path: '/integracoes/github/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/cofre': typeof CofreRoute
+  '/integracoes': typeof IntegracoesRoute
   '/lembretes': typeof LembretesRoute
   '/tarefas': typeof TarefasRoute
+  '/integracoes/github/callback': typeof IntegracoesGithubCallbackRoute
+  '/integracoes/github/setup': typeof IntegracoesGithubSetupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/cofre': typeof CofreRoute
+  '/integracoes': typeof IntegracoesRoute
   '/lembretes': typeof LembretesRoute
   '/tarefas': typeof TarefasRoute
+  '/integracoes/github/callback': typeof IntegracoesGithubCallbackRoute
+  '/integracoes/github/setup': typeof IntegracoesGithubSetupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/cofre': typeof CofreRoute
+  '/integracoes': typeof IntegracoesRoute
   '/lembretes': typeof LembretesRoute
   '/tarefas': typeof TarefasRoute
+  '/integracoes_/github/callback': typeof IntegracoesGithubCallbackRoute
+  '/integracoes_/github/setup': typeof IntegracoesGithubSetupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/cofre' | '/lembretes' | '/tarefas'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/cofre'
+    | '/integracoes'
+    | '/lembretes'
+    | '/tarefas'
+    | '/integracoes/github/callback'
+    | '/integracoes/github/setup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/cofre' | '/lembretes' | '/tarefas'
-  id: '__root__' | '/' | '/auth' | '/cofre' | '/lembretes' | '/tarefas'
+  to:
+    | '/'
+    | '/auth'
+    | '/cofre'
+    | '/integracoes'
+    | '/lembretes'
+    | '/tarefas'
+    | '/integracoes/github/callback'
+    | '/integracoes/github/setup'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/cofre'
+    | '/integracoes'
+    | '/lembretes'
+    | '/tarefas'
+    | '/integracoes_/github/callback'
+    | '/integracoes_/github/setup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   CofreRoute: typeof CofreRoute
+  IntegracoesRoute: typeof IntegracoesRoute
   LembretesRoute: typeof LembretesRoute
   TarefasRoute: typeof TarefasRoute
+  IntegracoesGithubCallbackRoute: typeof IntegracoesGithubCallbackRoute
+  IntegracoesGithubSetupRoute: typeof IntegracoesGithubSetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -102,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CofreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/integracoes': {
+      id: '/integracoes'
+      path: '/integracoes'
+      fullPath: '/integracoes'
+      preLoaderRoute: typeof IntegracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lembretes': {
       id: '/lembretes'
       path: '/lembretes'
@@ -116,6 +179,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TarefasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/integracoes_/github/callback': {
+      id: '/integracoes_/github/callback'
+      path: '/integracoes/github/callback'
+      fullPath: '/integracoes/github/callback'
+      preLoaderRoute: typeof IntegracoesGithubCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/integracoes_/github/setup': {
+      id: '/integracoes_/github/setup'
+      path: '/integracoes/github/setup'
+      fullPath: '/integracoes/github/setup'
+      preLoaderRoute: typeof IntegracoesGithubSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -123,8 +200,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   CofreRoute: CofreRoute,
+  IntegracoesRoute: IntegracoesRoute,
   LembretesRoute: LembretesRoute,
   TarefasRoute: TarefasRoute,
+  IntegracoesGithubCallbackRoute: IntegracoesGithubCallbackRoute,
+  IntegracoesGithubSetupRoute: IntegracoesGithubSetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
